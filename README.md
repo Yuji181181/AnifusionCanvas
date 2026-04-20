@@ -37,3 +37,8 @@ uv run uvicorn main:app --reload --host 0.0.0.0 --port 8000
 - Frontend: http://localhost:3000
 - Backend: http://localhost:8000
 - API docs: http://localhost:8000/docs
+
+## 開発前に必ず実施
+
+- 外部連携の詳細手順: [開発前セットアップ手順.md](開発前セットアップ手順.md)
+- 特に TiDB / Cloudflare R2 / OSSモデル取得 / Modal 連携を先に完了してください
