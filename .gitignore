@@ -11,5 +11,8 @@ frontend/.next/
 **/.env
 **/.env.local
 
+# Local model artifacts
+backend/artifacts/
+
 # OS
 .DS_Store
