@@ -42,6 +42,12 @@ class JobResponse(BaseModel):
     updated_at: datetime
 
 
+class ExportVideoResponse(BaseModel):
+    job_id: str
+    video_url: str
+    status: str
+
+
 app = FastAPI(title="Anifusion Canvas API", version="0.1.0")
 
 app.add_middleware(
@@ -83,7 +89,7 @@ async def _simulate_job(job_id: str) -> None:
                     "https://example.invalid/frame-001.png",
                     "https://example.invalid/frame-002.png",
                 ],
-                "preview_video_url": "https://example.invalid/preview.mp4",
+                "video_url": None,
             },
             "updated_at": datetime.now(UTC),
         }
@@ -116,3 +122,30 @@ async def get_job(job_id: str) -> JobResponse:
     if not job:
         raise HTTPException(status_code=404, detail="Job not found")
     return job
+
+
+@app.post("/v1/jobs/{job_id}/export", response_model=ExportVideoResponse)
+async def export_job_video(job_id: str) -> ExportVideoResponse:
+    job = jobs.get(job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+    if job.status != JobStatus.SUCCEEDED:
+        raise HTTPException(status_code=409, detail="Job is not ready for export")
+
+    result = job.result or {}
+    frames = result.get("frames")
+    if not isinstance(frames, list) or not frames:
+        raise HTTPException(status_code=409, detail="No frames available to export")
+
+    video_url = "https://example.invalid/manual-export.mp4"
+    jobs[job_id] = job.model_copy(
+        update={
+            "result": {
+                **result,
+                "video_url": video_url,
+                "exported_at": datetime.now(UTC).isoformat(),
+            },
+            "updated_at": datetime.now(UTC),
+        }
+    )
+    return ExportVideoResponse(job_id=job_id, video_url=video_url, status="exported")
