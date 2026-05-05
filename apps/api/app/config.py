@@ -22,10 +22,8 @@ class Settings(BaseSettings):
     tooncrafter_model_id: str = "Doubiiu/ToonCrafter"
     sd_inpaint_model_id: str = "diffusers/stable-diffusion-xl-1.0-inpainting-0.1"
 
-    # Modal
-    modal_profile: str = ""
-    modal_app_name: str = ""
-    modal_endpoint: str = ""
+    # Replicate
+    replicate_api_token: str = ""
 
 
 settings = Settings()
