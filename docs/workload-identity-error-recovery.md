@@ -106,7 +106,7 @@ gcloud iam workload-identity-pools providers list \
 次を **1行のまま** そのまま実行する。
 
 ```bash
-gcloud iam workload-identity-pools providers create-oidc github --project="anifusioncanvas" --location="global" --workload-identity-pool="github-actions" --display-name="GitHub provider" --issuer-uri="https://token.actions.githubusercontent.com" --attribute-mapping="google.subject=assertion.sub,attribute.repository=assertion.repository"
+gcloud iam workload-identity-pools providers create-oidc github --project="anifusioncanvas" --location="global" --workload-identity-pool="github-actions-live" --display-name="GitHub provider" --issuer-uri="https://token.actions.githubusercontent.com" --attribute-mapping="google.subject=assertion.sub,attribute.repository=assertion.repository" --attribute-condition="attribute.repository==\"Yuji181181/AnifusionCanvas\""
 ```
 
 ### 成功したら
@@ -159,7 +159,7 @@ gcloud iam workload-identity-pools create github-actions \
 ### 5-3. Provider を再作成する
 
 ```bash
-gcloud iam workload-identity-pools providers create-oidc github --project="anifusioncanvas" --location="global" --workload-identity-pool="github-actions" --display-name="GitHub provider" --issuer-uri="https://token.actions.githubusercontent.com" --attribute-mapping="google.subject=assertion.sub,attribute.repository=assertion.repository"
+gcloud iam workload-identity-pools providers create-oidc github --project="anifusioncanvas" --location="global" --workload-identity-pool="github-actions-live" --display-name="GitHub provider" --issuer-uri="https://token.actions.githubusercontent.com" --attribute-mapping="google.subject=assertion.sub,attribute.repository=assertion.repository" --attribute-condition="attribute.repository==\"Yuji181181/AnifusionCanvas\""
 ```
 
 ---

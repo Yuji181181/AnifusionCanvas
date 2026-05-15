@@ -31,6 +31,7 @@ docker compose down
 - 残りの環境構築は `docs/remaining-env-setup.md` を参照
 - 外部サービスの画面操作手順は `docs/external-console-setup-guide.md` を参照
 - Workload Identity Provider エラー時は `docs/workload-identity-error-recovery.md` を参照
+- Cloudflare Workers Builds 失敗時は `docs/cloudflare-workers-builds-note.md` を参照
 - `.env` は `deploy.sh` から直接読み込まれるため、コメント行を含んでもそのまま使える
 
 ## Direct Run

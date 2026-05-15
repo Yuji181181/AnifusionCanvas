@@ -369,7 +369,7 @@ projects/976317870900/locations/global/workloadIdentityPools/github-actions-live
 Provider が作れたあとで repository 制限をかけるなら、次のようにする。
 
 ```text
-attribute.repository == "haseg/AnifusionCanvas"
+attribute.repository == "Yuji181181/AnifusionCanvas"
 ```
 
 branch 制限まで入れる場合は、その時点で mapping に `attribute.ref=assertion.ref` を追加する。

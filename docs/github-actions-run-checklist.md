@@ -6,6 +6,11 @@
 2. `Deploy API to Cloud Run`
 3. `Deploy Web to Cloudflare Pages`
 
+補足:
+
+- Cloudflare Dashboard 側の `Workers Builds` は失敗していてもよい
+- このプロジェクトでは `Deploy Web to Cloudflare Pages` を正とする
+
 ## いまの前提
 
 - `GCP_WORKLOAD_IDENTITY_PROVIDER` は登録済み
