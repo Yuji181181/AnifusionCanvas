@@ -1,0 +1,33 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  web:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install
+
+      - name: Lint web
+        run: bun run lint:web
+
+      - name: Build web
+        env:
+          VITE_API_BASE_URL: https://anifusion-api-976317870900.asia-northeast1.run.app
+        run: bun run build:web
+
+      - name: Test web
+        run: bun run test:web

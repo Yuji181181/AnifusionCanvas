@@ -1,0 +1,47 @@
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: anifusion-api
+spec:
+  template:
+    metadata:
+      annotations:
+        autoscaling.knative.dev/minScale: '0'
+        autoscaling.knative.dev/maxScale: '3'
+        run.googleapis.com/cpu-throttling: 'false'
+    spec:
+      containerConcurrency: 10
+      timeoutSeconds: 900
+      containers:
+        - image: REGION-docker.pkg.dev/PROJECT_ID/REPOSITORY/anifusion-api:latest
+          ports:
+            - containerPort: 8080
+          env:
+            - name: APP_ENV
+              value: production
+            - name: API_PORT
+              value: '8080'
+            - name: FRONTEND_ORIGIN
+              value: https://anifusion-canvas.pages.dev
+            - name: DATABASE_URL
+              value: REPLACE_ME
+            - name: R2_ACCOUNT_ID
+              value: REPLACE_ME
+            - name: R2_ACCESS_KEY_ID
+              value: REPLACE_ME
+            - name: R2_SECRET_ACCESS_KEY
+              value: REPLACE_ME
+            - name: R2_BUCKET
+              value: REPLACE_ME
+            - name: R2_PUBLIC_BASE_URL
+              value: ''
+            - name: R2_ENDPOINT_URL
+              value: REPLACE_ME
+            - name: R2_REGION
+              value: auto
+            - name: REPLICATE_API_TOKEN
+              value: REPLACE_ME
+          resources:
+            limits:
+              cpu: '1'
+              memory: 1Gi
