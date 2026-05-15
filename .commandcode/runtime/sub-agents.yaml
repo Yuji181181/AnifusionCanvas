@@ -1,0 +1,48 @@
+version: 1
+roles:
+  planner:
+    file: agents/planner.md
+    can_delegate_to:
+      - architecture-reviewer
+      - task-decomposer
+      - docs-impact-analyzer
+  generater:
+    file: agents/generater.md
+    can_delegate_to:
+      - frontend-implementer
+      - backend-implementer
+      - docs-editor
+      - test-writer
+      - config-writer
+  evaluer:
+    file: agents/evaluer.md
+    can_delegate_to:
+      - requirement-auditor
+      - quality-reviewer
+      - consistency-checker
+      - test-evaluator
+sub_agents:
+  - name: architecture-reviewer
+    purpose: 現行アーキテクチャとの整合性確認
+  - name: task-decomposer
+    purpose: 要件を実装可能な単位へ分割
+  - name: docs-impact-analyzer
+    purpose: ドキュメントの変更波及箇所を洗い出す
+  - name: frontend-implementer
+    purpose: Vite+ / React SPA の実装
+  - name: backend-implementer
+    purpose: Go / Echo API の実装
+  - name: docs-editor
+    purpose: 要件定義・設計文書の更新
+  - name: test-writer
+    purpose: テストと検証コードの整備
+  - name: config-writer
+    purpose: CI、lint、agent設定の整備
+  - name: requirement-auditor
+    purpose: 要件カバレッジ確認
+  - name: quality-reviewer
+    purpose: 技術品質と運用リスクの評価
+  - name: consistency-checker
+    purpose: 文書、図、表、構成の整合確認
+  - name: test-evaluator
+    purpose: テスト妥当性の確認
