@@ -2,5 +2,12 @@
   "name": "anifusion-canvas",
   "version": "0.1.0",
   "private": true,
-  "workspaces": ["apps/*", "packages/*"]
+  "packageManager": "bun@1.2.13",
+  "workspaces": ["apps/*", "packages/*"],
+  "scripts": {
+    "dev:web": "bun run --cwd apps/web dev",
+    "build:web": "bun run --cwd apps/web build",
+    "test:web": "bun run --cwd apps/web test",
+    "lint:web": "bun run --cwd apps/web lint"
+  }
 }

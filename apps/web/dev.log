@@ -1,0 +1,6 @@
+$ vite --host "127.0.0.1"
+
+  VITE v5.4.21  ready in 123 ms
+
+  ➜  Local:   http://127.0.0.1:3000/
+error: script "dev" was terminated by signal SIGHUP (Terminal hung up)

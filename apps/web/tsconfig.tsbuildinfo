@@ -1,0 +1,1 @@
+{"root":["./src/app/main.tsx","./src/app/router.tsx","./src/test/setup.ts","./vite.config.ts","./vitest.config.ts","./playwright.config.ts"],"errors":true,"version":"5.9.3"}

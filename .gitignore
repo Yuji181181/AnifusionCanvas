@@ -1,36 +1,10 @@
-# Python
-.venv/
-__pycache__/
-*.pyc
-*.pyo
-*.egg-info/
-
-# Node
-node_modules/
-.next/
-out/
-
-# Environment
-.env
+node_modules
 .env.local
-.env.*.local
-
-# Local model artifacts
-artifacts/
-
-# IDE
-.vscode/
-.idea/
-
-# OS
 .DS_Store
-Thumbs.db
-
-# Test
-test-results/
-playwright-report/
-
-# uv
-uv.lock
-
-.claude
+apps/web/dist
+apps/web/playwright-report
+apps/web/test-results
+apps/api/bin
+coverage
+.env
+tmp
