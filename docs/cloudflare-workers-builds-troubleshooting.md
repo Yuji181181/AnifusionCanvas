@@ -9,6 +9,7 @@ PR の外部チェック `Workers Builds: anifusioncanvas` は Cloudflare Pages 
 ## Codex が対応済みのこと
 
 - ルートに `wrangler.toml` を追加
+- Root directory が `apps/web` の場合にも対応できるよう `apps/web/wrangler.toml` を追加
 - Worker 名を Cloudflare チェック名に合わせて `anifusioncanvas` に設定
 - `apps/web/dist` を Workers Static Assets の配信ディレクトリに設定
 - SPA の直接URLアクセスに対応するため `not_found_handling = "single-page-application"` を設定
@@ -34,7 +35,19 @@ bun install && bun run build:web
 npx wrangler deploy
 ```
 
-8. Root directory が空、または `/` になっていることを確認する
+8. Root directory を確認する
+
+Root directory が空、または `/` の場合:
+
+- リポジトリルートの `wrangler.toml` が使われます
+- Build command は `bun install && bun run build:web`
+- Deploy command は `npx wrangler deploy`
+
+Root directory が `apps/web` の場合:
+
+- `apps/web/wrangler.toml` が使われます
+- Build command は `bun install && bun run build`
+- Deploy command は `npx wrangler deploy`
 
 ## まだ失敗する場合
 
