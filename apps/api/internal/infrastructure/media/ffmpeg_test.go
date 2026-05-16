@@ -13,7 +13,15 @@ import (
 	"time"
 )
 
+func requireFFmpeg(t *testing.T) {
+	t.Helper()
+	if _, err := exec.LookPath("ffmpeg"); err != nil {
+		t.Skip("ffmpeg not available")
+	}
+}
+
 func TestSplitMP4ToFrames(t *testing.T) {
+	requireFFmpeg(t)
 	tmpDir := t.TempDir()
 	mp4Path := filepath.Join(tmpDir, "test.mp4")
 
@@ -40,6 +48,7 @@ func TestSplitMP4ToFrames(t *testing.T) {
 }
 
 func TestSplitMP4ToFramesMultipleFrames(t *testing.T) {
+	requireFFmpeg(t)
 	tmpDir := t.TempDir()
 	mp4Path := filepath.Join(tmpDir, "test.mp4")
 
@@ -58,6 +67,7 @@ func TestSplitMP4ToFramesMultipleFrames(t *testing.T) {
 }
 
 func TestEncodeFramesToMP4(t *testing.T) {
+	requireFFmpeg(t)
 	tmpDir := t.TempDir()
 
 	framePath := filepath.Join(tmpDir, "frame_0001.png")
@@ -80,6 +90,7 @@ func TestEncodeFramesToMP4(t *testing.T) {
 }
 
 func TestEncodeFramesToMP4MultipleFiles(t *testing.T) {
+	requireFFmpeg(t)
 	tmpDir := t.TempDir()
 
 	var framePaths []string
@@ -119,6 +130,7 @@ func TestEncodeFramesToMP4InvalidFPS(t *testing.T) {
 }
 
 func TestEncodeFramesToMP4ContextCancel(t *testing.T) {
+	requireFFmpeg(t)
 	tmpDir := t.TempDir()
 	framePath := filepath.Join(tmpDir, "frame_0001.png")
 	if err := generateTestPNG(t, framePath, 640, 360); err != nil {
@@ -135,6 +147,7 @@ func TestEncodeFramesToMP4ContextCancel(t *testing.T) {
 }
 
 func TestSplitMP4ToFramesContextCancel(t *testing.T) {
+	requireFFmpeg(t)
 	tmpDir := t.TempDir()
 	mp4Path := filepath.Join(tmpDir, "test.mp4")
 
