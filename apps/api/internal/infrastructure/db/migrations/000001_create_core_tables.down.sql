@@ -1,3 +1,3 @@
-DROP TABLE IF EXISTS jobs;
-DROP TABLE IF EXISTS frames;
-DROP TABLE IF EXISTS projects;
+DROP TABLE IF EXISTS studio_jobs;
+DROP TABLE IF EXISTS studio_frames;
+DROP TABLE IF EXISTS studio_projects;

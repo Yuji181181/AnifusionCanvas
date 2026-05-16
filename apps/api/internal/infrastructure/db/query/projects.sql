@@ -1,5 +1,5 @@
 -- name: UpsertProject :exec
-INSERT INTO projects (
+INSERT INTO studio_projects (
   id,
   name
 ) VALUES (?, ?)

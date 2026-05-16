@@ -8,12 +8,12 @@ SELECT
   kind,
   note,
   updated_at
-FROM frames
+FROM studio_frames
 WHERE project_id = ?
 ORDER BY frame_index ASC;
 
 -- name: UpsertFrame :exec
-INSERT INTO frames (
+INSERT INTO studio_frames (
   id,
   project_id,
   frame_index,
