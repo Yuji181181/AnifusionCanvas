@@ -1,6 +1,7 @@
 package bootstrap
 
 import (
+	"context"
 	"net/http"
 
 	"github.com/haseg/anifusion-canvas/apps/api/internal/config"
@@ -8,6 +9,7 @@ import (
 	"github.com/haseg/anifusion-canvas/apps/api/internal/http/router"
 	dbinfra "github.com/haseg/anifusion-canvas/apps/api/internal/infrastructure/db"
 	"github.com/haseg/anifusion-canvas/apps/api/internal/infrastructure/dependency"
+	"github.com/haseg/anifusion-canvas/apps/api/internal/infrastructure/storage"
 	"github.com/haseg/anifusion-canvas/apps/api/internal/usecase"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
@@ -41,7 +43,15 @@ func NewApp() (*App, error) {
 		}
 		studioStore = store
 	}
-	studioService := usecase.NewStudioServiceWithStore(studioStore)
+	var objectStore usecase.ObjectStore
+	if isR2Configured(cfg) {
+		store, err := storage.NewR2Store(context.Background(), cfg)
+		if err != nil {
+			return nil, err
+		}
+		objectStore = store
+	}
+	studioService := usecase.NewStudioServiceWithStoreAndObjects(studioStore, objectStore)
 	studioHandler := handler.NewStudioHandler(studioService)
 	healthHandler := handler.NewHealthHandler(dependency.NewChecker(cfg))
 	router.Register(e, studioHandler, healthHandler)
@@ -51,4 +61,11 @@ func NewApp() (*App, error) {
 
 func (a *App) Start() error {
 	return a.e.Start(":" + a.cfg.Port)
+}
+
+func isR2Configured(cfg config.Config) bool {
+	return cfg.R2Bucket != "" &&
+		cfg.R2EndpointURL != "" &&
+		cfg.R2AccessKeyID != "" &&
+		cfg.R2SecretAccessKey != ""
 }

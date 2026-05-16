@@ -164,7 +164,7 @@ func (h *StudioHandler) UpdateFrame(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusBadRequest, "imageDataUrl must be a data URL")
 	}
 
-	frame, err := h.service.UpdateFrame(input)
+	frame, err := h.service.UpdateFrame(c.Request().Context(), input)
 	if err != nil {
 		return echo.NewHTTPError(http.StatusNotFound, err.Error())
 	}

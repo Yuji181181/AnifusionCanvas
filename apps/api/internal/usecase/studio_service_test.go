@@ -1,6 +1,7 @@
 package usecase
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -122,7 +123,7 @@ func TestUpdateFrameMarksFrameEdited(t *testing.T) {
 	}
 	frame := frames[1]
 
-	updated, err := service.UpdateFrame(domain.UpdateFrameRequest{
+	updated, err := service.UpdateFrame(context.Background(), domain.UpdateFrameRequest{
 		ProjectID:    "project-1",
 		FrameID:      frame.ID,
 		ImageDataURL: "data:image/png;base64,edited",
@@ -133,6 +134,41 @@ func TestUpdateFrameMarksFrameEdited(t *testing.T) {
 	}
 	if updated.Kind != domain.FrameKindEdited {
 		t.Fatalf("expected edited frame, got %s", updated.Kind)
+	}
+}
+
+func TestUpdateFrameStoresEditedFrameObjectWhenConfigured(t *testing.T) {
+	objectStore := &fakeObjectStore{}
+	service := NewStudioServiceWithStoreAndObjects(NewMemoryStudioStore(), objectStore)
+	job := service.GenerateFrames(domain.GenerateFramesRequest{
+		ProjectID:  "project-1",
+		FrameCount: 2,
+	})
+	waitForJob(t, service, job.ID)
+	frames, err := service.ListFrames("project-1")
+	if err != nil {
+		t.Fatalf("list frames failed: %v", err)
+	}
+
+	updated, err := service.UpdateFrame(context.Background(), domain.UpdateFrameRequest{
+		ProjectID:    "project-1",
+		FrameID:      frames[1].ID,
+		ImageDataURL: "data:image/png;base64,edited",
+		Note:         "manual edit",
+	})
+	if err != nil {
+		t.Fatalf("update frame failed: %v", err)
+	}
+
+	expectedKey := "projects/project-1/frames/" + frames[1].ID + ".png"
+	if objectStore.key != expectedKey {
+		t.Fatalf("expected object key %q, got %q", expectedKey, objectStore.key)
+	}
+	if updated.ImageURL != "https://assets.example.test/"+expectedKey {
+		t.Fatalf("expected R2-backed image URL, got %q", updated.ImageURL)
+	}
+	if updated.ThumbnailURL != updated.ImageURL {
+		t.Fatalf("expected thumbnail URL to match image URL")
 	}
 }
 
@@ -196,6 +232,22 @@ func TestFrameMetadataDeleteAndReorder(t *testing.T) {
 			t.Fatalf("expected compact frame index %d, got %d", index, frame.Index)
 		}
 	}
+}
+
+type fakeObjectStore struct {
+	key     string
+	dataURL string
+}
+
+func (s *fakeObjectStore) PutDataURL(_ context.Context, key string, dataURL string) (domain.StorageObject, error) {
+	s.key = key
+	s.dataURL = dataURL
+	return domain.StorageObject{
+		Key:         key,
+		URL:         "https://assets.example.test/" + key,
+		ContentType: "image/png",
+		Size:        int64(len(dataURL)),
+	}, nil
 }
 
 func waitForJob(t *testing.T, service *StudioService, jobID string) domain.Job {

@@ -35,4 +35,6 @@ The current implementation intentionally does not mint signed URLs. Public asset
 - `apps/api/internal/infrastructure/storage.R2Store` wraps AWS SDK for Go v2 S3-compatible calls.
 - `PutDataURL` decodes a `data:` URL and uploads it to R2.
 - `PutBytes`, `GetObject`, and `DeleteObject` are available for generated files and cleanup flows.
+- `StudioService.UpdateFrame` stores manual edits in R2 when R2 is fully configured.
+- Local development without R2 credentials keeps the previous data URL behavior.
 - Unit tests use a fake S3 client, so CI does not require real R2 credentials.
