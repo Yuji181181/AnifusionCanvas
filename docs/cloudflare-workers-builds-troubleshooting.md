@@ -8,6 +8,28 @@ PR の外部チェック `Workers Builds: anifusioncanvas` は Cloudflare Pages 
 
 GitHub の check-run API には Cloudflare の詳細ログ本文が返っておらず、失敗理由は Cloudflare Dashboard の Build log で確認する必要があります。
 
+## 今回確認できたエラー
+
+Cloudflare のログでは、依存関係のインストール後に build command が実行されず、deploy command の `npx wrangler versions upload` が直接実行されています。
+
+```text
+Installing project dependencies: bun install --frozen-lockfile
+Executing user deploy command: npx wrangler versions upload
+✘ [ERROR] The directory specified by the "assets.directory" field in your configuration file does not exist
+```
+
+原因は `wrangler.toml` の `assets.directory` が指す `apps/web/dist` または `dist` が、Vite build 前のため存在しないことです。
+
+このリポジトリ側の `wrangler.toml` は正しく、ローカルでは次の dry-run が通っています。
+
+```bash
+bun run build:web
+bunx wrangler deploy --dry-run
+bunx wrangler deploy --config apps/web/wrangler.toml --dry-run
+```
+
+そのため、Cloudflare Dashboard 側で build command を設定する必要があります。
+
 ## Codex が対応済みのこと
 
 - ルートに `wrangler.toml` を追加
@@ -44,6 +66,7 @@ Root directory が空、または `/` の場合:
 - リポジトリルートの `wrangler.toml` が使われます
 - Build command は `bun install && bun run build:web`
 - Deploy command は `npx wrangler deploy`
+- Preview deploy command または non-production deploy command は `npx wrangler versions upload`
 
 9. Environment variables に次が入っていることを確認する
 
@@ -66,6 +89,25 @@ Root directory が `apps/web` の場合:
 - `apps/web/wrangler.toml` が使われます
 - Build command は `bun install && bun run build`
 - Deploy command は `npx wrangler deploy`
+- Preview deploy command または non-production deploy command は `npx wrangler versions upload`
+
+## 最短の修正
+
+今回のログと同じ失敗であれば、Cloudflare Dashboard で build command を設定して再実行してください。
+
+Root directory が `/` の場合:
+
+```bash
+bun run build:web
+```
+
+Root directory が `apps/web` の場合:
+
+```bash
+bun run build
+```
+
+Cloudflare 側が build command の前に自動で `bun install --frozen-lockfile` を実行しているため、build command に `bun install` を含めなくても構いません。
 
 ## まだ失敗する場合
 
