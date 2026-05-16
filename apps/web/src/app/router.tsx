@@ -1,7 +1,16 @@
-import { createRootRoute, createRoute, createRouter, Outlet } from '@tanstack/react-router'
+import { createRootRoute, createRoute, createRouter, Outlet, redirect } from '@tanstack/react-router'
+import { AppShell } from '@/components/layout/app-shell'
+import { ExportRoute } from '@/routes/export'
+import { GenerateRoute } from '@/routes/step1.generate'
+import { InpaintRoute } from '@/routes/step2.inpaint'
+import { EditRoute } from '@/routes/step3.edit'
 
 function RootLayout() {
-  return <Outlet />
+  return (
+    <AppShell>
+      <Outlet />
+    </AppShell>
+  )
 }
 
 const rootRoute = createRootRoute({
@@ -11,10 +20,36 @@ const rootRoute = createRootRoute({
 const indexRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/',
-  component: () => <div>Anifusion Canvas</div>,
+  beforeLoad: () => {
+    throw redirect({ to: '/step1' })
+  },
 })
 
-const routeTree = rootRoute.addChildren([indexRoute])
+const step1Route = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/step1',
+  component: GenerateRoute,
+})
+
+const step2Route = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/step2',
+  component: InpaintRoute,
+})
+
+const step3Route = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/step3',
+  component: EditRoute,
+})
+
+const exportRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/export',
+  component: ExportRoute,
+})
+
+const routeTree = rootRoute.addChildren([indexRoute, step1Route, step2Route, step3Route, exportRoute])
 
 export const router = createRouter({
   routeTree,
