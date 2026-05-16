@@ -104,6 +104,7 @@ func checkDatabaseSchema(ctx context.Context, db *sql.DB) error {
 			"message",
 			"result_json",
 			"error",
+			"version",
 			"created_at",
 			"updated_at",
 		},

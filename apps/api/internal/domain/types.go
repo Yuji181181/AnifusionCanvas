@@ -60,8 +60,22 @@ type Job struct {
 	Message   string    `json:"message"`
 	Result    any       `json:"result,omitempty"`
 	Error     string    `json:"error,omitempty"`
+	Version   int       `json:"version"`
 	CreatedAt string    `json:"createdAt"`
 	UpdatedAt string    `json:"updatedAt"`
+}
+
+// CanTransitionTo reports whether the job can legally transition to the target status.
+// Allowed transitions: queued→running→succeeded|failed
+func (j Job) CanTransitionTo(target JobStatus) bool {
+	switch j.Status {
+	case JobStatusQueued:
+		return target == JobStatusRunning || target == JobStatusFailed
+	case JobStatusRunning:
+		return target == JobStatusSucceeded || target == JobStatusFailed
+	default:
+		return false
+	}
 }
 
 type CreateProjectRequest struct {

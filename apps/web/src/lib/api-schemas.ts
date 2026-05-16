@@ -64,6 +64,7 @@ export function jobSchema<T extends z.ZodTypeAny>(resultSchema: T = z.unknown() 
     message: z.string(),
     result: resultSchema.optional(),
     error: z.string().optional(),
+    version: z.number(),
     createdAt: z.string(),
     updatedAt: z.string(),
   })

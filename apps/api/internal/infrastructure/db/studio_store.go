@@ -341,8 +341,9 @@ INSERT INTO studio_jobs (
   job_type,
   status,
   progress,
-  message
-) VALUES (?, ?, ?, ?, ?, ?)`,
+  message,
+  version
+) VALUES (?, ?, ?, ?, ?, ?, 1)`,
 		job.ID,
 		nullString(job.ProjectID),
 		string(job.Type),
@@ -353,32 +354,39 @@ INSERT INTO studio_jobs (
 	return err
 }
 
-func (s *StudioStore) UpdateJob(job domain.Job) error {
+func (s *StudioStore) UpdateJob(job domain.Job) (bool, error) {
 	resultJSON, err := json.Marshal(job.Result)
 	if err != nil {
-		return err
+		return false, err
 	}
 	if string(resultJSON) == "null" {
 		resultJSON = nil
 	}
 
-	_, err = s.db.Exec(`
+	res, err := s.db.Exec(`
 UPDATE studio_jobs
 SET
   status = ?,
   progress = ?,
   message = ?,
   result_json = ?,
-  error = ?
-WHERE id = ?`,
+  error = ?,
+  version = version + 1
+WHERE id = ? AND version = ?`,
 		string(job.Status),
 		job.Progress,
 		job.Message,
 		nullBytes(resultJSON),
 		nullString(job.Error),
 		job.ID,
+		job.Version,
 	)
-	return err
+	if err != nil {
+		return false, err
+	}
+
+	rows, _ := res.RowsAffected()
+	return rows > 0, nil
 }
 
 func (s *StudioStore) GetJob(jobID string) (domain.Job, bool, error) {
@@ -398,6 +406,7 @@ SELECT
   message,
   result_json,
   error,
+  version,
   DATE_FORMAT(created_at, '%Y-%m-%dT%H:%i:%sZ'),
   DATE_FORMAT(updated_at, '%Y-%m-%dT%H:%i:%sZ')
 FROM studio_jobs
@@ -410,6 +419,7 @@ WHERE id = ?`, jobID).Scan(
 		&job.Message,
 		&resultJSON,
 		&errorMessage,
+		&job.Version,
 		&job.CreatedAt,
 		&job.UpdatedAt,
 	)

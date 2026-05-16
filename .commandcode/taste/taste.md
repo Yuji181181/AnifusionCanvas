@@ -23,3 +23,6 @@
 # Infrastructure
 - Prefer CLI tools and Terraform for infrastructure automation instead of manual console operations. Confidence: 0.75
 
+# Git
+- Create smaller, more granular commits and pull requests instead of large batch commits. Confidence: 0.85
+

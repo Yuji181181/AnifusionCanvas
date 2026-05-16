@@ -38,6 +38,7 @@ export type Job<T = unknown> = {
   message: string
   result?: T
   error?: string
+  version: number
   createdAt: string
   updatedAt: string
 }
