@@ -16,6 +16,15 @@ cd "$ROOT_DIR/apps/api"
 docker build -t "$IMAGE_URI" .
 docker push "$IMAGE_URI"
 
+# Clear an older secret binding before setting the optional public URL as a
+# literal env var. Cloud Run does not allow changing an env var's value type in
+# one deploy command.
+gcloud run services update "$GCP_SERVICE_NAME" \
+  --project "$GCP_PROJECT_ID" \
+  --region "$GCP_REGION" \
+  --remove-secrets R2_PUBLIC_BASE_URL \
+  >/dev/null || true
+
 gcloud run deploy "$GCP_SERVICE_NAME" \
   --image "$IMAGE_URI" \
   --project "$GCP_PROJECT_ID" \
