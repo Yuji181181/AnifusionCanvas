@@ -45,7 +45,7 @@ SELECT
   kind,
   COALESCE(note, ''),
   DATE_FORMAT(updated_at, '%Y-%m-%dT%H:%i:%sZ')
-FROM frames
+FROM studio_frames
 WHERE project_id = ?
 ORDER BY frame_index ASC`, projectID)
 	if err != nil {
@@ -89,7 +89,7 @@ func (s *StudioStore) ReplaceFrames(projectID string, frames []domain.Frame) err
 	if err := upsertProject(tx, projectID); err != nil {
 		return err
 	}
-	if _, err := tx.Exec(`DELETE FROM frames WHERE project_id = ?`, projectID); err != nil {
+	if _, err := tx.Exec(`DELETE FROM studio_frames WHERE project_id = ?`, projectID); err != nil {
 		return err
 	}
 	for _, frame := range frames {
@@ -114,7 +114,7 @@ SELECT
   kind,
   COALESCE(note, ''),
   DATE_FORMAT(updated_at, '%Y-%m-%dT%H:%i:%sZ')
-FROM frames
+FROM studio_frames
 WHERE project_id = ? AND id = ?`, projectID, frameID).Scan(
 		&frame.ID,
 		&frame.ProjectID,
@@ -155,7 +155,7 @@ func (s *StudioStore) UpsertFrame(frame domain.Frame) error {
 
 func (s *StudioStore) CreateJob(job domain.Job) error {
 	_, err := s.db.Exec(`
-INSERT INTO jobs (
+INSERT INTO studio_jobs (
   id,
   project_id,
   job_type,
@@ -183,7 +183,7 @@ func (s *StudioStore) UpdateJob(job domain.Job) error {
 	}
 
 	_, err = s.db.Exec(`
-UPDATE jobs
+UPDATE studio_jobs
 SET
   status = ?,
   progress = ?,
@@ -219,7 +219,7 @@ SELECT
   error,
   DATE_FORMAT(created_at, '%Y-%m-%dT%H:%i:%sZ'),
   DATE_FORMAT(updated_at, '%Y-%m-%dT%H:%i:%sZ')
-FROM jobs
+FROM studio_jobs
 WHERE id = ?`, jobID).Scan(
 		&job.ID,
 		&projectID,
@@ -255,7 +255,7 @@ WHERE id = ?`, jobID).Scan(
 
 func upsertProject(tx *sql.Tx, projectID string) error {
 	_, err := tx.Exec(`
-INSERT INTO projects (
+INSERT INTO studio_projects (
   id,
   name
 ) VALUES (?, ?)
@@ -266,7 +266,7 @@ ON DUPLICATE KEY UPDATE
 
 func upsertFrame(tx *sql.Tx, frame domain.Frame) error {
 	_, err := tx.Exec(`
-INSERT INTO frames (
+INSERT INTO studio_frames (
   id,
   project_id,
   frame_index,

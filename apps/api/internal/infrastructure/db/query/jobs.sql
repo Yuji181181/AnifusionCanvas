@@ -10,11 +10,11 @@ SELECT
   error,
   created_at,
   updated_at
-FROM jobs
+FROM studio_jobs
 WHERE id = ?;
 
 -- name: CreateJob :exec
-INSERT INTO jobs (
+INSERT INTO studio_jobs (
   id,
   project_id,
   job_type,
@@ -24,7 +24,7 @@ INSERT INTO jobs (
 ) VALUES (?, ?, ?, ?, ?, ?);
 
 -- name: UpdateJobState :exec
-UPDATE jobs
+UPDATE studio_jobs
 SET
   status = ?,
   progress = ?,

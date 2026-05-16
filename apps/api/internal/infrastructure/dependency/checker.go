@@ -83,8 +83,8 @@ func (c *Checker) CheckDatabase(ctx context.Context) CheckResult {
 
 func checkDatabaseSchema(ctx context.Context, db *sql.DB) error {
 	required := map[string][]string{
-		"projects": {"id", "name", "created_at", "updated_at"},
-		"frames": {
+		"studio_projects": {"id", "name", "created_at", "updated_at"},
+		"studio_frames": {
 			"id",
 			"project_id",
 			"frame_index",
@@ -95,7 +95,7 @@ func checkDatabaseSchema(ctx context.Context, db *sql.DB) error {
 			"created_at",
 			"updated_at",
 		},
-		"jobs": {
+		"studio_jobs": {
 			"id",
 			"project_id",
 			"job_type",

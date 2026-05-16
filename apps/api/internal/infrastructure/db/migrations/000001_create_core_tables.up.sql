@@ -1,11 +1,11 @@
-CREATE TABLE projects (
+CREATE TABLE studio_projects (
   id VARCHAR(64) PRIMARY KEY,
   name VARCHAR(255) NOT NULL,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
 
-CREATE TABLE frames (
+CREATE TABLE studio_frames (
   id VARCHAR(96) PRIMARY KEY,
   project_id VARCHAR(64) NOT NULL,
   frame_index INT NOT NULL,
@@ -15,12 +15,11 @@ CREATE TABLE frames (
   note TEXT NULL,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  CONSTRAINT fk_frames_project_id FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE,
-  UNIQUE KEY uniq_frames_project_index (project_id, frame_index),
-  KEY idx_frames_project_id (project_id)
+  UNIQUE KEY uniq_studio_frames_project_index (project_id, frame_index),
+  KEY idx_studio_frames_project_id (project_id)
 );
 
-CREATE TABLE jobs (
+CREATE TABLE studio_jobs (
   id VARCHAR(96) PRIMARY KEY,
   project_id VARCHAR(64) NULL,
   job_type VARCHAR(32) NOT NULL,
@@ -31,6 +30,6 @@ CREATE TABLE jobs (
   error TEXT NULL,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  KEY idx_jobs_project_id (project_id),
-  KEY idx_jobs_status (status)
+  KEY idx_studio_jobs_project_id (project_id),
+  KEY idx_studio_jobs_status (status)
 );
