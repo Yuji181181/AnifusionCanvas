@@ -21,6 +21,7 @@ GoのJSON tagとTypeScript contractのプロパティ名を一致させる。片
 | Frame | `domain.Frame` | `Frame` |
 | Frame kind | `domain.FrameKind` | `FrameKind` |
 | Job | `domain.Job` | `Job<T>` |
+| Job type | `domain.JobType` | `JobType` |
 | Job status | `domain.JobStatus` | `JobStatus` |
 | Dependency check result | `dependency.CheckResult` | `DependencyCheckResult` |
 | API error | `handler.ErrorBody` | `ApiErrorResponse` |
@@ -61,6 +62,23 @@ GoのJSON tagとTypeScript contractのプロパティ名を一致させる。片
 | `error` | string, optional | Failure detail |
 | `createdAt` | string | RFC3339 timestamp |
 | `updatedAt` | string | RFC3339 timestamp |
+
+Job result types:
+
+| `type` | Result type |
+| --- | --- |
+| `generation` | `GenerateFramesResult` |
+| `inpainting` | `InpaintFrameResult` |
+| `export` | `ExportVideoResult` |
+
+Typed job aliases:
+
+```ts
+type GenerateFramesJob = Job<GenerateFramesResult> & { type: 'generation' }
+type InpaintFrameJob = Job<InpaintFrameResult> & { type: 'inpainting' }
+type ExportVideoJob = Job<ExportVideoResult> & { type: 'export' }
+type StudioJob = GenerateFramesJob | InpaintFrameJob | ExportVideoJob
+```
 
 ### Dependency Check Result
 
@@ -417,6 +435,14 @@ Response:
 ```ts
 type GetJobResponse<T = unknown> = {
   job: Job<T>
+}
+```
+
+For general studio job polling, web clients may use:
+
+```ts
+type GetStudioJobResponse = {
+  job: StudioJob
 }
 ```
 

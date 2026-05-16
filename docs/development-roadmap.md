@@ -117,7 +117,7 @@
 
 - [x] Project の作成、取得、更新 API を追加する
 - [x] Frame の削除、並び替え、kind / note 更新 API を追加する
-- [ ] Job の type 別 result schema を Go / TypeScript 双方で厳密化する
+- [x] Job の type 別 result schema を Go / TypeScript 双方で厳密化する
 - [ ] `packages/contracts` に `/health/dependencies`、Project、storage object、export artifact の型を追加する
 - [ ] API request / response の Zod schema を web 側で利用できる形に整理する
 - [ ] DB migration に projects / frames / jobs の不足メタデータを追加する

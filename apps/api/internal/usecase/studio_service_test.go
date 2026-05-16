@@ -22,6 +22,12 @@ func TestGenerateFramesCreatesTimeline(t *testing.T) {
 	if job.Status != domain.JobStatusSucceeded {
 		t.Fatalf("expected succeeded job, got %s", job.Status)
 	}
+	if job.Type != domain.JobTypeGeneration {
+		t.Fatalf("expected generation job type, got %s", job.Type)
+	}
+	if _, ok := job.Result.(domain.GenerateFramesResult); !ok {
+		t.Fatalf("expected typed generation result, got %T", job.Result)
+	}
 
 	frames, err := service.ListFrames("project-1")
 	if err != nil {
