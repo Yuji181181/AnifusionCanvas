@@ -35,6 +35,8 @@ The current implementation intentionally does not mint signed URLs. Public asset
 - `apps/api/internal/infrastructure/storage.R2Store` wraps AWS SDK for Go v2 S3-compatible calls.
 - `PutDataURL` decodes a `data:` URL and uploads it to R2.
 - `PutBytes`, `GetObject`, and `DeleteObject` are available for generated files and cleanup flows.
+- `StudioService.GenerateFrames` stores uploaded keyframes under `inputs/` and generated frame images under `frames/` when R2 is fully configured.
+- `StudioService.InpaintFrame` stores the submitted mask under `masks/` and the inpainted result image under `frames/` when R2 is fully configured.
 - `StudioService.UpdateFrame` stores manual edits in R2 when R2 is fully configured.
 - Local development without R2 credentials keeps the previous data URL behavior.
 - R2 upload failures return a `500` API error instead of being reported as a missing frame.

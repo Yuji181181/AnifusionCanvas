@@ -53,7 +53,7 @@
 - [ ] `GenerateFrames` は ToonCrafter 呼び出しではなく demo image 生成
 - [ ] `InpaintFrame` は SDXL Inpainting 呼び出しではなく demo image 差し替え
 - [ ] `ExportVideo` は FFmpeg 実行ではなく data URL の模擬結果
-- [ ] R2 は health check のみで、画像 / 動画アップロード処理は未実装
+- [ ] R2 画像アップロードは手動編集、生成、Inpainting に対応済み。動画アップロード処理は未実装
 - [ ] Replicate は account health check のみで、推論 client / polling / result mapping は未実装
 - [ ] Cloud Run のスケールアウトを前提にした永続ジョブワーカー、排他、再開処理は未完了
 - [ ] testcontainers-go を使う DB 結合テストは未実装
@@ -151,8 +151,8 @@
 
 受け入れ基準:
 
-- [ ] 生成、Inpainting、手動編集の画像が R2 に保存される
-- [ ] DB には永続的に参照可能な URL または object key が保存される
+- [x] 生成、Inpainting、手動編集の画像が R2 に保存される
+- [x] DB には永続的に参照可能な URL または object key が保存される
 - [ ] local memory store と database store の両方で同じ API 契約が保たれる
 
 検証:

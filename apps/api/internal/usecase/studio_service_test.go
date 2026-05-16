@@ -3,6 +3,7 @@ package usecase
 import (
 	"context"
 	"fmt"
+	"strings"
 	"testing"
 	"time"
 
@@ -111,6 +112,41 @@ func TestGenerateFramesDoesNotOverwriteProjectName(t *testing.T) {
 	}
 }
 
+func TestGenerateFramesStoresImagesWhenConfigured(t *testing.T) {
+	objectStore := &fakeObjectStore{}
+	service := NewStudioServiceWithStoreAndObjects(NewMemoryStudioStore(), objectStore)
+
+	job := service.GenerateFrames(domain.GenerateFramesRequest{
+		ProjectID:         "project-1",
+		FrameCount:        2,
+		StartImageDataURL: "data:image/png;base64,start",
+		EndImageDataURL:   "data:image/png;base64,end",
+	})
+	job = waitForJob(t, service, job.ID)
+	if job.Status != domain.JobStatusSucceeded {
+		t.Fatalf("expected succeeded job, got %s: %s", job.Status, job.Error)
+	}
+
+	frames, err := service.ListFrames("project-1")
+	if err != nil {
+		t.Fatalf("list frames failed: %v", err)
+	}
+	if len(frames) != 4 {
+		t.Fatalf("expected 4 frames, got %d", len(frames))
+	}
+	for _, frame := range frames {
+		if !strings.HasPrefix(frame.ImageURL, "https://assets.example.test/projects/project-1/") {
+			t.Fatalf("expected R2-backed frame URL, got %q", frame.ImageURL)
+		}
+	}
+	if !objectStore.hasKeyPrefix("projects/project-1/inputs/") {
+		t.Fatalf("expected keyframe input objects, got %#v", objectStore.calls)
+	}
+	if !objectStore.hasKeyPrefix("projects/project-1/frames/") {
+		t.Fatalf("expected generated frame objects, got %#v", objectStore.calls)
+	}
+}
+
 func TestUpdateFrameMarksFrameEdited(t *testing.T) {
 	service := NewStudioService()
 	job := service.GenerateFrames(domain.GenerateFramesRequest{
@@ -174,13 +210,14 @@ func TestUpdateFrameStoresEditedFrameObjectWhenConfigured(t *testing.T) {
 }
 
 func TestUpdateFrameReturnsObjectStoreErrors(t *testing.T) {
-	objectStore := &fakeObjectStore{err: fmt.Errorf("upload failed")}
+	objectStore := &fakeObjectStore{}
 	service := NewStudioServiceWithStoreAndObjects(NewMemoryStudioStore(), objectStore)
 	job := service.GenerateFrames(domain.GenerateFramesRequest{
 		ProjectID:  "project-1",
 		FrameCount: 2,
 	})
 	waitForJob(t, service, job.ID)
+	objectStore.err = fmt.Errorf("upload failed")
 	frames, err := service.ListFrames("project-1")
 	if err != nil {
 		t.Fatalf("list frames failed: %v", err)
@@ -196,6 +233,48 @@ func TestUpdateFrameReturnsObjectStoreErrors(t *testing.T) {
 	}
 	if err.Error() != "store edited frame object: upload failed" {
 		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestInpaintFrameStoresMaskAndResultWhenConfigured(t *testing.T) {
+	objectStore := &fakeObjectStore{}
+	service := NewStudioServiceWithStoreAndObjects(NewMemoryStudioStore(), objectStore)
+	job := service.GenerateFrames(domain.GenerateFramesRequest{
+		ProjectID:         "project-1",
+		FrameCount:        2,
+		StartImageDataURL: "data:image/png;base64,start",
+		EndImageDataURL:   "data:image/png;base64,end",
+	})
+	waitForJob(t, service, job.ID)
+	frames, err := service.ListFrames("project-1")
+	if err != nil {
+		t.Fatalf("list frames failed: %v", err)
+	}
+
+	inpaintJob := service.InpaintFrame(domain.InpaintFrameRequest{
+		ProjectID:   "project-1",
+		FrameID:     frames[1].ID,
+		Prompt:      "repair hand",
+		MaskDataURL: "data:image/png;base64,mask",
+		Strength:    0.65,
+	})
+	inpaintJob = waitForJob(t, service, inpaintJob.ID)
+	if inpaintJob.Status != domain.JobStatusSucceeded {
+		t.Fatalf("expected succeeded inpainting job, got %s: %s", inpaintJob.Status, inpaintJob.Error)
+	}
+
+	result, ok := inpaintJob.Result.(domain.InpaintFrameResult)
+	if !ok {
+		t.Fatalf("expected typed inpainting result, got %T", inpaintJob.Result)
+	}
+	if result.Frame.Kind != domain.FrameKindInpainted {
+		t.Fatalf("expected inpainted frame, got %s", result.Frame.Kind)
+	}
+	if !strings.HasPrefix(result.Frame.ImageURL, "https://assets.example.test/projects/project-1/frames/") {
+		t.Fatalf("expected R2-backed inpaint result URL, got %q", result.Frame.ImageURL)
+	}
+	if !objectStore.hasKeyPrefix("projects/project-1/masks/") {
+		t.Fatalf("expected inpainting mask object, got %#v", objectStore.calls)
 	}
 }
 
@@ -265,11 +344,13 @@ type fakeObjectStore struct {
 	key     string
 	dataURL string
 	err     error
+	calls   []fakeObjectPut
 }
 
 func (s *fakeObjectStore) PutDataURL(_ context.Context, key string, dataURL string) (domain.StorageObject, error) {
 	s.key = key
 	s.dataURL = dataURL
+	s.calls = append(s.calls, fakeObjectPut{key: key, dataURL: dataURL})
 	if s.err != nil {
 		return domain.StorageObject{}, s.err
 	}
@@ -279,6 +360,20 @@ func (s *fakeObjectStore) PutDataURL(_ context.Context, key string, dataURL stri
 		ContentType: "image/png",
 		Size:        int64(len(dataURL)),
 	}, nil
+}
+
+func (s *fakeObjectStore) hasKeyPrefix(prefix string) bool {
+	for _, call := range s.calls {
+		if strings.HasPrefix(call.key, prefix) {
+			return true
+		}
+	}
+	return false
+}
+
+type fakeObjectPut struct {
+	key     string
+	dataURL string
 }
 
 func waitForJob(t *testing.T, service *StudioService, jobID string) domain.Job {

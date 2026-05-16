@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -394,8 +395,16 @@ func newTestEchoWithService(service *usecase.StudioService) *echo.Echo {
 
 type failingObjectStore struct{}
 
-func (failingObjectStore) PutDataURL(context.Context, string, string) (domain.StorageObject, error) {
-	return domain.StorageObject{}, fmt.Errorf("upload failed")
+func (failingObjectStore) PutDataURL(_ context.Context, key string, dataURL string) (domain.StorageObject, error) {
+	if strings.Contains(dataURL, "edited") {
+		return domain.StorageObject{}, fmt.Errorf("upload failed")
+	}
+	return domain.StorageObject{
+		Key:         key,
+		URL:         "https://assets.example.test/" + key,
+		ContentType: "image/png",
+		Size:        int64(len(dataURL)),
+	}, nil
 }
 
 func performJSON(t *testing.T, e *echo.Echo, method string, path string, body any) *httptest.ResponseRecorder {
