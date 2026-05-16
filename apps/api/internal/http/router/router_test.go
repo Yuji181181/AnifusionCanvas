@@ -85,6 +85,7 @@ func TestStudioUpdateRouteReturnsNotFoundForMissingFrame(t *testing.T) {
 	if res.Code != http.StatusNotFound {
 		t.Fatalf("expected status %d, got %d: %s", http.StatusNotFound, res.Code, res.Body.String())
 	}
+	assertErrorResponse(t, res, "Not Found", "frame not found")
 }
 
 func TestStudioRoutesRejectInvalidRequests(t *testing.T) {
@@ -148,12 +149,14 @@ func TestStudioRoutesRejectInvalidRequests(t *testing.T) {
 			if res.Code != http.StatusBadRequest {
 				t.Fatalf("expected status %d, got %d: %s", http.StatusBadRequest, res.Code, res.Body.String())
 			}
+			assertErrorCode(t, res, "Bad Request")
 		})
 	}
 }
 
 func newTestEcho() *echo.Echo {
 	e := echo.New()
+	e.HTTPErrorHandler = handler.JSONErrorHandler
 	service := usecase.NewStudioService()
 	studioHandler := handler.NewStudioHandler(service)
 	healthHandler := handler.NewHealthHandler(dependency.NewChecker(config.Config{}))
@@ -207,5 +210,31 @@ func decodeJSON(t *testing.T, res *httptest.ResponseRecorder, target any) {
 
 	if err := json.NewDecoder(res.Body).Decode(target); err != nil {
 		t.Fatalf("decode response failed: %v; body: %s", err, res.Body.String())
+	}
+}
+
+func assertErrorCode(t *testing.T, res *httptest.ResponseRecorder, code string) {
+	t.Helper()
+
+	var payload handler.ErrorBody
+	decodeJSON(t, res, &payload)
+	if payload.Error.Code != code {
+		t.Fatalf("expected error code %q, got %q", code, payload.Error.Code)
+	}
+	if payload.Error.Message == "" {
+		t.Fatalf("expected error message to be set")
+	}
+}
+
+func assertErrorResponse(t *testing.T, res *httptest.ResponseRecorder, code string, message string) {
+	t.Helper()
+
+	var payload handler.ErrorBody
+	decodeJSON(t, res, &payload)
+	if payload.Error.Code != code {
+		t.Fatalf("expected error code %q, got %q", code, payload.Error.Code)
+	}
+	if payload.Error.Message != message {
+		t.Fatalf("expected error message %q, got %q", message, payload.Error.Message)
 	}
 }

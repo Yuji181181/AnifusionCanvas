@@ -94,3 +94,10 @@ export type GetJobResponse<T = unknown> = {
 export type HealthResponse = {
   status: string
 }
+
+export type ApiErrorResponse = {
+  error: {
+    code: string
+    message: string
+  }
+}

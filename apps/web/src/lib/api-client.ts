@@ -1,4 +1,5 @@
 import type {
+  ApiErrorResponse,
   ExportVideoRequest,
   ExportVideoResponse,
   GenerateFramesRequest,
@@ -22,11 +23,28 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
   })
 
   if (!response.ok) {
-    const message = await response.text()
+    const message = await errorMessage(response)
     throw new Error(message || `API request failed: ${response.status}`)
   }
 
   return response.json() as Promise<T>
+}
+
+async function errorMessage(response: Response): Promise<string> {
+  const body = await response.text()
+  const contentType = response.headers.get('content-type') ?? ''
+  if (contentType.includes('application/json')) {
+    try {
+      const payload = JSON.parse(body) as Partial<ApiErrorResponse>
+      if (payload.error?.message) {
+        return payload.error.message
+      }
+    } catch {
+      return body
+    }
+  }
+
+  return body
 }
 
 function pathParam(value: string): string {

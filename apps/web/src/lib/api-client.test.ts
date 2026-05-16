@@ -113,9 +113,23 @@ describe('apiClient', () => {
     )
   })
 
-  it('throws response text for failed requests', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response('projectId is required', { status: 400 })))
+  it('throws API error response messages for failed requests', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        new Response(JSON.stringify({ error: { code: 'Bad Request', message: 'projectId is required' } }), {
+          headers: { 'content-type': 'application/json' },
+          status: 400,
+        }),
+      ),
+    )
 
     await expect(apiClient.listFrames('')).rejects.toThrow('projectId is required')
+  })
+
+  it('falls back to response text for non-JSON failed requests', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response('service unavailable', { status: 503 })))
+
+    await expect(apiClient.listFrames('project-1')).rejects.toThrow('service unavailable')
   })
 })
