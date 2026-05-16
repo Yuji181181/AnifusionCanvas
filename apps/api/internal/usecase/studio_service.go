@@ -103,6 +103,18 @@ func (s *StudioService) GenerateFrames(input domain.GenerateFramesRequest) domai
 		}
 		frames = append(frames, s.newFrame(input.ProjectID, input.FrameCount+1, domain.FrameKindKey, input.EndImageDataURL, "end keyframe"))
 
+		if s.objectStore != nil {
+			for index := range frames {
+				prefix := "frames"
+				if frames[index].Kind == domain.FrameKindKey {
+					prefix = "inputs"
+				}
+				if err := s.storeFrameImage(context.Background(), &frames[index], prefix); err != nil {
+					return nil, err
+				}
+			}
+		}
+
 		if err := s.store.ReplaceFrames(input.ProjectID, frames); err != nil {
 			return nil, err
 		}
@@ -132,11 +144,21 @@ func (s *StudioService) InpaintFrame(input domain.InpaintFrameRequest) domain.Jo
 		if !ok {
 			return nil, fmt.Errorf("frame not found")
 		}
+		if s.objectStore != nil {
+			if _, err := s.objectStore.PutDataURL(context.Background(), maskObjectKey(input.ProjectID, job.ID, input.MaskDataURL), input.MaskDataURL); err != nil {
+				return nil, fmt.Errorf("store inpainting mask object: %w", err)
+			}
+		}
 		frame.Kind = domain.FrameKindInpainted
 		frame.Note = input.Prompt
 		frame.ImageURL = demoImage("INPAINT", 146)
 		frame.ThumbnailURL = frame.ImageURL
 		frame.UpdatedAt = now()
+		if s.objectStore != nil {
+			if err := s.storeFrameImage(context.Background(), &frame, "frames"); err != nil {
+				return nil, err
+			}
+		}
 		if err := s.store.UpsertFrame(frame); err != nil {
 			return nil, err
 		}
@@ -159,7 +181,7 @@ func (s *StudioService) UpdateFrame(ctx context.Context, input domain.UpdateFram
 	frame.Kind = domain.FrameKindEdited
 	imageURL := input.ImageDataURL
 	if s.objectStore != nil {
-		object, err := s.objectStore.PutDataURL(ctx, editedFrameObjectKey(input.ProjectID, input.FrameID, input.ImageDataURL), input.ImageDataURL)
+		object, err := s.objectStore.PutDataURL(ctx, frameObjectKey(input.ProjectID, input.FrameID, input.ImageDataURL), input.ImageDataURL)
 		if err != nil {
 			return domain.Frame{}, fmt.Errorf("store edited frame object: %w", err)
 		}
@@ -176,7 +198,25 @@ func (s *StudioService) UpdateFrame(ctx context.Context, input domain.UpdateFram
 	return frame, nil
 }
 
-func editedFrameObjectKey(projectID string, frameID string, dataURL string) string {
+func (s *StudioService) storeFrameImage(ctx context.Context, frame *domain.Frame, prefix string) error {
+	object, err := s.objectStore.PutDataURL(ctx, projectObjectKey(frame.ProjectID, prefix, frame.ID, frame.ImageURL), frame.ImageURL)
+	if err != nil {
+		return fmt.Errorf("store %s object: %w", prefix, err)
+	}
+	frame.ImageURL = object.URL
+	frame.ThumbnailURL = object.URL
+	return nil
+}
+
+func frameObjectKey(projectID string, frameID string, dataURL string) string {
+	return projectObjectKey(projectID, "frames", frameID, dataURL)
+}
+
+func maskObjectKey(projectID string, jobID string, dataURL string) string {
+	return projectObjectKey(projectID, "masks", jobID, dataURL)
+}
+
+func projectObjectKey(projectID string, prefix string, objectID string, dataURL string) string {
 	extension := ".bin"
 	if strings.HasPrefix(dataURL, "data:image/png") {
 		extension = ".png"
@@ -187,7 +227,10 @@ func editedFrameObjectKey(projectID string, frameID string, dataURL string) stri
 	if strings.HasPrefix(dataURL, "data:image/webp") {
 		extension = ".webp"
 	}
-	return fmt.Sprintf("projects/%s/frames/%s%s", projectID, frameID, extension)
+	if strings.HasPrefix(dataURL, "data:image/svg+xml") {
+		extension = ".svg"
+	}
+	return fmt.Sprintf("projects/%s/%s/%s%s", projectID, prefix, objectID, extension)
 }
 
 func (s *StudioService) UpdateFrameMetadata(input domain.UpdateFrameMetadataRequest) (domain.Frame, bool, error) {
