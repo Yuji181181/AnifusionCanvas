@@ -24,6 +24,7 @@ GoのJSON tagとTypeScript contractのプロパティ名を一致させる。片
 | Job | `domain.Job` | `Job<T>` |
 | Job type | `domain.JobType` | `JobType` |
 | Job status | `domain.JobStatus` | `JobStatus` |
+| Export artifact | `domain.ExportArtifact` | `ExportArtifact` |
 | Dependency check result | `dependency.CheckResult` | `DependencyCheckResult` |
 | API error | `handler.ErrorBody` | `ApiErrorResponse` |
 
@@ -57,6 +58,19 @@ GoのJSON tagとTypeScript contractのプロパティ名を一致させる。片
 | `url` | string | Public URL when `R2_PUBLIC_BASE_URL` is set, otherwise an internal `r2://` URI |
 | `contentType` | string | Object media type |
 | `size` | number | Object size in bytes |
+
+### Export Artifact
+
+`ExportArtifact` extends `StorageObject` with video export metadata.
+
+| JSON field | Type | Notes |
+| --- | --- | --- |
+| `key` | string | R2 object key |
+| `url` | string | Public URL when `R2_PUBLIC_BASE_URL` is set, otherwise an internal `r2://` URI |
+| `contentType` | string | Exported video media type |
+| `size` | number | Object size in bytes |
+| `frameCount` | number | Number of frames encoded into the video |
+| `fps` | number | Frames per second used for the export |
 
 ### Job
 
@@ -427,6 +441,16 @@ type ExportVideoRequest = {
 Response:
 
 ```ts
+type ExportArtifact = StorageObject & {
+  frameCount: number
+  fps: number
+}
+
+type ExportVideoResult = {
+  videoUrl: string
+  artifact?: ExportArtifact
+}
+
 type ExportVideoResponse = {
   job: Job<ExportVideoResult>
 }

@@ -129,8 +129,14 @@ export type ExportVideoRequest = {
   fps: number
 }
 
+export type ExportArtifact = StorageObject & {
+  frameCount: number
+  fps: number
+}
+
 export type ExportVideoResult = {
   videoUrl: string
+  artifact?: ExportArtifact
 }
 
 export type ExportVideoResponse = {
