@@ -384,6 +384,10 @@ func (s *fakeObjectStore) PutBytes(_ context.Context, key string, contentType st
 	}, nil
 }
 
+func (s *fakeObjectStore) DeleteObject(_ context.Context, key string) error {
+	return nil
+}
+
 func (s *fakeObjectStore) hasKeyPrefix(prefix string) bool {
 	for _, call := range s.calls {
 		if strings.HasPrefix(call.key, prefix) {

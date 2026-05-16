@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log"
 	"math"
 	"net/http"
 	"os"
@@ -39,6 +40,7 @@ type StudioStore interface {
 type ObjectStore interface {
 	PutDataURL(ctx context.Context, key string, dataURL string) (domain.StorageObject, error)
 	PutBytes(ctx context.Context, key string, contentType string, data []byte) (domain.StorageObject, error)
+	DeleteObject(ctx context.Context, key string) error
 }
 
 // ReplicateClient abstracts the Replicate API for use by StudioService.
@@ -690,6 +692,8 @@ func (s *StudioService) createJob(projectID string, jobType domain.JobType, mess
 }
 
 func (s *StudioService) runJob(jobID string, run func(update func(int, string)) (any, error)) {
+	s.logf("job.start", "job_id", jobID)
+
 	update := func(progress int, message string) {
 		job, ok, err := s.store.GetJob(jobID)
 		if err != nil || !ok {
@@ -702,12 +706,19 @@ func (s *StudioService) runJob(jobID string, run func(update func(int, string)) 
 		job.Progress = progress
 		job.Message = message
 		job.UpdatedAt = now()
-		_, _ = s.store.UpdateJob(job)
+		updated, _ := s.store.UpdateJob(job)
+		if updated {
+			s.logf("job.progress", "job_id", jobID, "progress", fmt.Sprintf("%d", progress), "message", message)
+		}
 	}
 
 	result, err := run(update)
+
 	job, ok, getErr := s.store.GetJob(jobID)
 	if getErr != nil || !ok {
+		if getErr != nil {
+			s.logf("job.lost", "job_id", jobID, "error", getErr.Error())
+		}
 		return
 	}
 	if err != nil {
@@ -717,6 +728,8 @@ func (s *StudioService) runJob(jobID string, run func(update func(int, string)) 
 		job.Status = domain.JobStatusFailed
 		job.Error = err.Error()
 		job.Message = "ジョブに失敗しました"
+		s.logf("job.failed", "job_id", jobID, "error", err.Error())
+		s.cleanupStaleObjects(job)
 	} else {
 		if !job.CanTransitionTo(domain.JobStatusSucceeded) {
 			return
@@ -725,9 +738,40 @@ func (s *StudioService) runJob(jobID string, run func(update func(int, string)) 
 		job.Progress = 100
 		job.Message = "完了しました"
 		job.Result = result
+		s.logf("job.completed", "job_id", jobID)
 	}
 	job.UpdatedAt = now()
 	_, _ = s.store.UpdateJob(job)
+}
+
+func (s *StudioService) cleanupStaleObjects(job domain.Job) {
+	if s.objectStore == nil {
+		return
+	}
+	ctx := context.Background()
+	keys := []string{
+		fmt.Sprintf("projects/%s/generated/%s.mp4", job.ProjectID, job.ID),
+		fmt.Sprintf("projects/%s/masks/%s.png", job.ProjectID, job.ID),
+		fmt.Sprintf("projects/%s/exports/%s.mp4", job.ProjectID, job.ID),
+	}
+	for _, key := range keys {
+		if err := s.objectStore.DeleteObject(ctx, key); err == nil {
+			s.logf("object.cleanup", "key", key, "job_id", job.ID)
+		}
+	}
+}
+
+func (s *StudioService) logf(event string, keyvals ...string) {
+	var b strings.Builder
+	b.WriteString("event=")
+	b.WriteString(event)
+	for i := 0; i < len(keyvals)-1; i += 2 {
+		b.WriteString(" ")
+		b.WriteString(keyvals[i])
+		b.WriteString("=")
+		b.WriteString(keyvals[i+1])
+	}
+	log.Println(b.String())
 }
 
 func (s *StudioService) newFrame(projectID string, index int, kind domain.FrameKind, imageURL string, note string) domain.Frame {

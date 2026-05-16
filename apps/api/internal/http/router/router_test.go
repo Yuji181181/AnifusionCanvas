@@ -416,6 +416,10 @@ func (failingObjectStore) PutBytes(_ context.Context, key string, contentType st
 	}, nil
 }
 
+func (failingObjectStore) DeleteObject(_ context.Context, key string) error {
+	return nil
+}
+
 func performJSON(t *testing.T, e *echo.Echo, method string, path string, body any) *httptest.ResponseRecorder {
 	t.Helper()
 
