@@ -1,13 +1,18 @@
 package usecase
 
 import (
+	"bytes"
 	"context"
+	"encoding/base64"
 	"fmt"
+	"image"
+	"image/png"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/haseg/anifusion-canvas/apps/api/internal/domain"
+	"github.com/haseg/anifusion-canvas/apps/api/internal/infrastructure/replicate"
 )
 
 func TestGenerateFramesCreatesTimeline(t *testing.T) {
@@ -255,7 +260,7 @@ func TestInpaintFrameStoresMaskAndResultWhenConfigured(t *testing.T) {
 		ProjectID:   "project-1",
 		FrameID:     frames[1].ID,
 		Prompt:      "repair hand",
-		MaskDataURL: "data:image/png;base64,mask",
+		MaskDataURL: validMaskDataURL(t),
 		Strength:    0.65,
 	})
 	inpaintJob = waitForJob(t, service, inpaintJob.ID)
@@ -362,6 +367,19 @@ func (s *fakeObjectStore) PutDataURL(_ context.Context, key string, dataURL stri
 	}, nil
 }
 
+func (s *fakeObjectStore) PutBytes(_ context.Context, key string, contentType string, data []byte) (domain.StorageObject, error) {
+	s.calls = append(s.calls, fakeObjectPut{key: key, dataURL: contentType})
+	if s.err != nil {
+		return domain.StorageObject{}, s.err
+	}
+	return domain.StorageObject{
+		Key:         key,
+		URL:         "https://assets.example.test/" + key,
+		ContentType: contentType,
+		Size:        int64(len(data)),
+	}, nil
+}
+
 func (s *fakeObjectStore) hasKeyPrefix(prefix string) bool {
 	for _, call := range s.calls {
 		if strings.HasPrefix(call.key, prefix) {
@@ -396,4 +414,269 @@ func waitForJob(t *testing.T, service *StudioService, jobID string) domain.Job {
 
 	t.Fatalf("timed out waiting for job %s", jobID)
 	return domain.Job{}
+}
+
+func validMaskDataURL(t *testing.T) string {
+	t.Helper()
+	img := image.NewRGBA(image.Rect(0, 0, 4, 4))
+	var buf bytes.Buffer
+	if err := png.Encode(&buf, img); err != nil {
+		t.Fatalf("encode mask PNG: %v", err)
+	}
+	return "data:image/png;base64," + base64.StdEncoding.EncodeToString(buf.Bytes())
+}
+
+type mockReplicateClient struct {
+	createOutput        any
+	createErr           error
+	pollResult          *replicate.Prediction
+	pollErr             error
+	downloadData        []byte
+	downloadErr         error
+	createCalledVersion string
+}
+
+func (m *mockReplicateClient) CreatePrediction(_ context.Context, version string, input map[string]any) (*replicate.Prediction, error) {
+	m.createCalledVersion = version
+	if m.createErr != nil {
+		return nil, m.createErr
+	}
+	return &replicate.Prediction{
+		ID:     "pred-001",
+		Status: replicate.StatusStarting,
+	}, nil
+}
+
+func (m *mockReplicateClient) GetPrediction(_ context.Context, id string) (*replicate.Prediction, error) {
+	if m.pollResult != nil {
+		return m.pollResult, nil
+	}
+	return &replicate.Prediction{
+		ID:     id,
+		Status: replicate.StatusSucceeded,
+		Output: m.createOutput,
+	}, nil
+}
+
+func (m *mockReplicateClient) WaitForPrediction(ctx context.Context, id string, pollInterval time.Duration) (*replicate.Prediction, error) {
+	if m.pollErr != nil {
+		return nil, m.pollErr
+	}
+	if m.pollResult != nil {
+		return m.pollResult, nil
+	}
+	return &replicate.Prediction{
+		ID:     id,
+		Status: replicate.StatusSucceeded,
+		Output: m.createOutput,
+	}, nil
+}
+
+func (m *mockReplicateClient) DownloadOutput(_ context.Context, url string) ([]byte, error) {
+	if m.downloadErr != nil {
+		return nil, m.downloadErr
+	}
+	if m.downloadData != nil {
+		return m.downloadData, nil
+	}
+	return []byte("fake-result"), nil
+}
+
+func TestGenerateFramesWithReplicateCreatesFrames(t *testing.T) {
+	objectStore := &fakeObjectStore{}
+	replicateClient := &mockReplicateClient{
+		createOutput: "https://replicate.delivery/test.mp4",
+	}
+
+	service := NewStudioServiceWithDependencies(
+		NewMemoryStudioStore(),
+		objectStore,
+		replicateClient,
+		"fofr/tooncrafter",
+		"lucataco/sdxl-inpainting",
+	)
+
+	job := service.GenerateFrames(domain.GenerateFramesRequest{
+		ProjectID:         "proj-rep-gen",
+		Prompt:            "turn around",
+		FrameCount:        2,
+		StartImageDataURL: "data:image/png;base64,start",
+		EndImageDataURL:   "data:image/png;base64,end",
+	})
+	job = waitForJob(t, service, job.ID)
+
+	if job.Status != domain.JobStatusSucceeded {
+		t.Fatalf("expected succeeded job, got %s: %s", job.Status, job.Error)
+	}
+	if replicateClient.createCalledVersion != "fofr/tooncrafter" {
+		t.Fatalf("expected ToonCrafter version, got %q", replicateClient.createCalledVersion)
+	}
+
+	result, ok := job.Result.(domain.GenerateFramesResult)
+	if !ok {
+		t.Fatalf("expected typed generation result, got %T", job.Result)
+	}
+	if result.RawVideoURL == "" {
+		t.Fatalf("expected raw video URL in result")
+	}
+	if len(result.Frames) != 4 {
+		t.Fatalf("expected 4 frames, got %d", len(result.Frames))
+	}
+}
+
+func TestInpaintFrameWithReplicateUpdatesFrame(t *testing.T) {
+	objectStore := &fakeObjectStore{}
+	genReplicate := &mockReplicateClient{
+		createOutput: "https://replicate.delivery/test.mp4",
+	}
+	inpaintReplicate := &mockReplicateClient{
+		createOutput: []any{"https://replicate.delivery/inpainted.png"},
+	}
+
+	// Generation needs a Replicate client that returns video output
+	genService := NewStudioServiceWithDependencies(
+		NewMemoryStudioStore(),
+		objectStore,
+		genReplicate,
+		"fofr/tooncrafter",
+		"",
+	)
+	genJob := genService.GenerateFrames(domain.GenerateFramesRequest{
+		ProjectID:         "proj-rep-inp",
+		Prompt:            "walk",
+		FrameCount:        2,
+		StartImageDataURL: "data:image/png;base64,start",
+		EndImageDataURL:   "data:image/png;base64,end",
+	})
+	waitForJob(t, genService, genJob.ID)
+
+	// Inpainting uses its own service with a separate Replicate client (list output)
+	service := NewStudioServiceWithDependencies(
+		genService.store,
+		objectStore,
+		inpaintReplicate,
+		"",
+		"lucataco/sdxl-inpainting",
+	)
+	frames, _ := service.ListFrames("proj-rep-inp")
+
+	inpaintJob := service.InpaintFrame(domain.InpaintFrameRequest{
+		ProjectID:   "proj-rep-inp",
+		FrameID:     frames[1].ID,
+		Prompt:      "fix the hand",
+		MaskDataURL: validMaskDataURL(t),
+		Strength:    0.8,
+	})
+	inpaintJob = waitForJob(t, service, inpaintJob.ID)
+
+	if inpaintJob.Status != domain.JobStatusSucceeded {
+		t.Fatalf("expected succeeded inpainting job, got %s: %s", inpaintJob.Status, inpaintJob.Error)
+	}
+
+	result, ok := inpaintJob.Result.(domain.InpaintFrameResult)
+	if !ok {
+		t.Fatalf("expected typed inpainting result, got %T", inpaintJob.Result)
+	}
+	if result.Frame.Kind != domain.FrameKindInpainted {
+		t.Fatalf("expected inpainted frame, got %s", result.Frame.Kind)
+	}
+	if result.Frame.Note != "fix the hand" {
+		t.Fatalf("expected prompt in note, got %q", result.Frame.Note)
+	}
+}
+
+func TestGenerateFramesReplicateErrorMarksJobFailed(t *testing.T) {
+	replicateClient := &mockReplicateClient{
+		createErr: fmt.Errorf("API rate limit exceeded"),
+	}
+
+	service := NewStudioServiceWithDependencies(
+		NewMemoryStudioStore(),
+		nil,
+		replicateClient,
+		"fofr/tooncrafter",
+		"",
+	)
+
+	job := service.GenerateFrames(domain.GenerateFramesRequest{
+		ProjectID:         "proj-1",
+		Prompt:            "turn",
+		FrameCount:        2,
+		StartImageDataURL: "data:image/png;base64,start",
+		EndImageDataURL:   "data:image/png;base64,end",
+	})
+	job = waitForJob(t, service, job.ID)
+
+	if job.Status != domain.JobStatusFailed {
+		t.Fatalf("expected failed job, got %s", job.Status)
+	}
+}
+
+func TestInpaintFrameReplicatePredictionFailed(t *testing.T) {
+	inpaintReplicate := &mockReplicateClient{
+		pollResult: &replicate.Prediction{
+			ID:     "pred-001",
+			Status: replicate.StatusFailed,
+			Error:  "CUDA out of memory",
+		},
+	}
+
+	// Generate frames in demo mode (no Replicate client)
+	demoService := NewStudioService()
+	genJob := demoService.GenerateFrames(domain.GenerateFramesRequest{
+		ProjectID:  "proj-inp-fail",
+		Prompt:     "walk",
+		FrameCount: 2,
+	})
+	waitForJob(t, demoService, genJob.ID)
+	frames, _ := demoService.ListFrames("proj-inp-fail")
+
+	// Inpainting with the failing Replicate client
+	service := NewStudioServiceWithDependencies(
+		demoService.store,
+		nil,
+		inpaintReplicate,
+		"",
+		"lucataco/sdxl-inpainting",
+	)
+
+	inpaintJob := service.InpaintFrame(domain.InpaintFrameRequest{
+		ProjectID:   "proj-inp-fail",
+		FrameID:     frames[1].ID,
+		Prompt:      "fix",
+		MaskDataURL: validMaskDataURL(t),
+		Strength:    0.5,
+	})
+	inpaintJob = waitForJob(t, service, inpaintJob.ID)
+
+	if inpaintJob.Status != domain.JobStatusFailed {
+		t.Fatalf("expected failed inpainting job, got %s", inpaintJob.Status)
+	}
+}
+
+func TestStudioServiceFallsBackToDemoWithoutReplicateClient(t *testing.T) {
+	service := NewStudioServiceWithDependencies(
+		NewMemoryStudioStore(),
+		nil,
+		nil,
+		"fofr/tooncrafter",
+		"lucataco/sdxl-inpainting",
+	)
+
+	job := service.GenerateFrames(domain.GenerateFramesRequest{
+		ProjectID:         "proj-1",
+		Prompt:            "turn",
+		FrameCount:        2,
+		StartImageDataURL: "data:image/png;base64,start",
+		EndImageDataURL:   "data:image/png;base64,end",
+	})
+	job = waitForJob(t, service, job.ID)
+
+	if job.Status != domain.JobStatusSucceeded {
+		t.Fatalf("expected succeeded demo job, got %s: %s", job.Status, job.Error)
+	}
+	result, _ := job.Result.(domain.GenerateFramesResult)
+	if result.RawVideoURL != "" {
+		t.Fatalf("expected no raw video URL in demo mode")
+	}
 }

@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/haseg/anifusion-canvas/apps/api/internal/domain"
+	"github.com/haseg/anifusion-canvas/apps/api/internal/infrastructure/replicate"
 )
 
 var ErrFrameNotFound = errors.New("frame not found")
@@ -32,11 +33,23 @@ type StudioStore interface {
 
 type ObjectStore interface {
 	PutDataURL(ctx context.Context, key string, dataURL string) (domain.StorageObject, error)
+	PutBytes(ctx context.Context, key string, contentType string, data []byte) (domain.StorageObject, error)
+}
+
+// ReplicateClient abstracts the Replicate API for use by StudioService.
+type ReplicateClient interface {
+	CreatePrediction(ctx context.Context, version string, input map[string]any) (*replicate.Prediction, error)
+	GetPrediction(ctx context.Context, id string) (*replicate.Prediction, error)
+	WaitForPrediction(ctx context.Context, id string, pollInterval time.Duration) (*replicate.Prediction, error)
+	DownloadOutput(ctx context.Context, url string) ([]byte, error)
 }
 
 type StudioService struct {
-	store       StudioStore
-	objectStore ObjectStore
+	store             StudioStore
+	objectStore       ObjectStore
+	replicateClient   ReplicateClient
+	toonCrafterVer    string
+	sdxlInpaintingVer string
 }
 
 func NewStudioService() *StudioService {
@@ -49,6 +62,16 @@ func NewStudioServiceWithStore(store StudioStore) *StudioService {
 
 func NewStudioServiceWithStoreAndObjects(store StudioStore, objectStore ObjectStore) *StudioService {
 	return &StudioService{store: store, objectStore: objectStore}
+}
+
+func NewStudioServiceWithDependencies(store StudioStore, objectStore ObjectStore, replicateClient ReplicateClient, toonCrafterVer string, sdxlInpaintingVer string) *StudioService {
+	return &StudioService{
+		store:             store,
+		objectStore:       objectStore,
+		replicateClient:   replicateClient,
+		toonCrafterVer:    toonCrafterVer,
+		sdxlInpaintingVer: sdxlInpaintingVer,
+	}
 }
 
 func (s *StudioService) CreateProject(input domain.CreateProjectRequest) (domain.Project, error) {
@@ -87,42 +110,123 @@ func (s *StudioService) GenerateFrames(input domain.GenerateFramesRequest) domai
 	}
 
 	go s.runJob(job.ID, func(update func(int, string)) (any, error) {
-		update(18, "ToonCrafter入力を準備しています")
-		time.Sleep(350 * time.Millisecond)
-		update(52, "フレームを補間しています")
-		time.Sleep(450 * time.Millisecond)
-		update(82, "タイムラインへ登録しています")
-		time.Sleep(300 * time.Millisecond)
-
-		frames := make([]domain.Frame, 0, input.FrameCount+2)
-		frames = append(frames, s.newFrame(input.ProjectID, 0, domain.FrameKindKey, input.StartImageDataURL, "start keyframe"))
-		for i := 0; i < input.FrameCount; i++ {
-			label := fmt.Sprintf("AI %02d", i+1)
-			hue := int(math.Mod(float64(178+i*24), 360))
-			frames = append(frames, s.newFrame(input.ProjectID, i+1, domain.FrameKindGenerated, demoImage(label, hue), input.Prompt))
+		if s.replicateClient != nil {
+			return s.generateFramesWithReplicate(job, input, update)
 		}
-		frames = append(frames, s.newFrame(input.ProjectID, input.FrameCount+1, domain.FrameKindKey, input.EndImageDataURL, "end keyframe"))
-
-		if s.objectStore != nil {
-			for index := range frames {
-				prefix := "frames"
-				if frames[index].Kind == domain.FrameKindKey {
-					prefix = "inputs"
-				}
-				if err := s.storeFrameImage(context.Background(), &frames[index], prefix); err != nil {
-					return nil, err
-				}
-			}
-		}
-
-		if err := s.store.ReplaceFrames(input.ProjectID, frames); err != nil {
-			return nil, err
-		}
-
-		return domain.GenerateFramesResult{Frames: frames}, nil
+		return s.generateFramesDemo(job, input, update)
 	})
 
 	return job
+}
+
+func (s *StudioService) generateFramesWithReplicate(job domain.Job, input domain.GenerateFramesRequest, update func(int, string)) (any, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+	defer cancel()
+
+	update(10, "ToonCrafterで推論を開始しています")
+	toonInput := replicate.BuildToonCrafterInput(input)
+	prediction, err := s.replicateClient.CreatePrediction(ctx, s.toonCrafterVer, toonInput)
+	if err != nil {
+		return nil, fmt.Errorf("ToonCrafter推論の開始に失敗しました: %w", err)
+	}
+
+	update(25, "AIがフレームを生成しています")
+	prediction, err = s.replicateClient.WaitForPrediction(ctx, prediction.ID, 1*time.Second)
+	if err != nil {
+		return nil, fmt.Errorf("推論の待機に失敗しました: %w", err)
+	}
+	if prediction.Status != replicate.StatusSucceeded {
+		return nil, fmt.Errorf("ToonCrafter推論に失敗しました: %s", prediction.Error)
+	}
+
+	videoURL := replicate.ParseToonCrafterOutput(prediction)
+	if videoURL == "" {
+		return nil, fmt.Errorf("ToonCrafterが動画出力を返しませんでした")
+	}
+
+	update(55, "生成結果をダウンロードしています")
+	videoData, err := s.replicateClient.DownloadOutput(ctx, videoURL)
+	if err != nil {
+		return nil, fmt.Errorf("生成動画のダウンロードに失敗しました: %w", err)
+	}
+
+	var rawVideoURL string
+	if s.objectStore != nil {
+		update(80, "動画を保存しています")
+		videoKey := fmt.Sprintf("projects/%s/generated/%s.mp4", job.ProjectID, job.ID)
+		videoObj, err := s.objectStore.PutBytes(ctx, videoKey, "video/mp4", videoData)
+		if err != nil {
+			return nil, fmt.Errorf("生成動画の保存に失敗しました: %w", err)
+		}
+		rawVideoURL = videoObj.URL
+	}
+
+	update(90, "タイムラインへ登録しています")
+	frames := make([]domain.Frame, 0, input.FrameCount+2)
+	frames = append(frames, s.newFrame(input.ProjectID, 0, domain.FrameKindKey, input.StartImageDataURL, "start keyframe"))
+	for i := 0; i < input.FrameCount; i++ {
+		label := fmt.Sprintf("AI %02d", i+1)
+		hue := int(math.Mod(float64(178+i*24), 360))
+		frames = append(frames, s.newFrame(input.ProjectID, i+1, domain.FrameKindGenerated, demoImage(label, hue), input.Prompt))
+	}
+	frames = append(frames, s.newFrame(input.ProjectID, input.FrameCount+1, domain.FrameKindKey, input.EndImageDataURL, "end keyframe"))
+
+	if s.objectStore != nil {
+		for index := range frames {
+			prefix := "frames"
+			if frames[index].Kind == domain.FrameKindKey {
+				prefix = "inputs"
+			}
+			if err := s.storeFrameImage(ctx, &frames[index], prefix); err != nil {
+				return nil, err
+			}
+		}
+	}
+
+	if err := s.store.ReplaceFrames(input.ProjectID, frames); err != nil {
+		return nil, err
+	}
+
+	return domain.GenerateFramesResult{
+		Frames:      frames,
+		RawVideoURL: rawVideoURL,
+	}, nil
+}
+
+func (s *StudioService) generateFramesDemo(job domain.Job, input domain.GenerateFramesRequest, update func(int, string)) (any, error) {
+	update(18, "ToonCrafter入力を準備しています")
+	time.Sleep(350 * time.Millisecond)
+	update(52, "フレームを補間しています")
+	time.Sleep(450 * time.Millisecond)
+	update(82, "タイムラインへ登録しています")
+	time.Sleep(300 * time.Millisecond)
+
+	frames := make([]domain.Frame, 0, input.FrameCount+2)
+	frames = append(frames, s.newFrame(input.ProjectID, 0, domain.FrameKindKey, input.StartImageDataURL, "start keyframe"))
+	for i := 0; i < input.FrameCount; i++ {
+		label := fmt.Sprintf("AI %02d", i+1)
+		hue := int(math.Mod(float64(178+i*24), 360))
+		frames = append(frames, s.newFrame(input.ProjectID, i+1, domain.FrameKindGenerated, demoImage(label, hue), input.Prompt))
+	}
+	frames = append(frames, s.newFrame(input.ProjectID, input.FrameCount+1, domain.FrameKindKey, input.EndImageDataURL, "end keyframe"))
+
+	if s.objectStore != nil {
+		for index := range frames {
+			prefix := "frames"
+			if frames[index].Kind == domain.FrameKindKey {
+				prefix = "inputs"
+			}
+			if err := s.storeFrameImage(context.Background(), &frames[index], prefix); err != nil {
+				return nil, err
+			}
+		}
+	}
+
+	if err := s.store.ReplaceFrames(input.ProjectID, frames); err != nil {
+		return nil, err
+	}
+
+	return domain.GenerateFramesResult{Frames: frames}, nil
 }
 
 func (s *StudioService) InpaintFrame(input domain.InpaintFrameRequest) domain.Job {
@@ -132,41 +236,122 @@ func (s *StudioService) InpaintFrame(input domain.InpaintFrameRequest) domain.Jo
 	}
 
 	go s.runJob(job.ID, func(update func(int, string)) (any, error) {
-		update(28, "マスク領域を解析しています")
-		time.Sleep(300 * time.Millisecond)
-		update(72, "プロンプトに沿って部分修正しています")
-		time.Sleep(500 * time.Millisecond)
-
-		frame, ok, err := s.store.FindFrame(input.ProjectID, input.FrameID)
-		if err != nil {
-			return nil, err
+		if s.replicateClient != nil {
+			return s.inpaintFrameWithReplicate(job, input, update)
 		}
-		if !ok {
-			return nil, fmt.Errorf("frame not found")
-		}
-		if s.objectStore != nil {
-			if _, err := s.objectStore.PutDataURL(context.Background(), maskObjectKey(input.ProjectID, job.ID, input.MaskDataURL), input.MaskDataURL); err != nil {
-				return nil, fmt.Errorf("store inpainting mask object: %w", err)
-			}
-		}
-		frame.Kind = domain.FrameKindInpainted
-		frame.Note = input.Prompt
-		frame.ImageURL = demoImage("INPAINT", 146)
-		frame.ThumbnailURL = frame.ImageURL
-		frame.UpdatedAt = now()
-		if s.objectStore != nil {
-			if err := s.storeFrameImage(context.Background(), &frame, "frames"); err != nil {
-				return nil, err
-			}
-		}
-		if err := s.store.UpsertFrame(frame); err != nil {
-			return nil, err
-		}
-
-		return domain.InpaintFrameResult{Frame: frame}, nil
+		return s.inpaintFrameDemo(job, input, update)
 	})
 
 	return job
+}
+
+func (s *StudioService) inpaintFrameWithReplicate(job domain.Job, input domain.InpaintFrameRequest, update func(int, string)) (any, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+	defer cancel()
+
+	frame, ok, err := s.store.FindFrame(input.ProjectID, input.FrameID)
+	if err != nil {
+		return nil, err
+	}
+	if !ok {
+		return nil, fmt.Errorf("frame not found")
+	}
+
+	update(20, "Inpainting推論を開始しています")
+	inpaintInput, err := replicate.BuildSDXLInpaintingInput(input, frame.ImageURL)
+	if err != nil {
+		return nil, fmt.Errorf("Inpainting入力の構築に失敗しました: %w", err)
+	}
+
+	prediction, err := s.replicateClient.CreatePrediction(ctx, s.sdxlInpaintingVer, inpaintInput)
+	if err != nil {
+		return nil, fmt.Errorf("Inpainting推論の開始に失敗しました: %w", err)
+	}
+
+	update(45, "AIが部分修正を実行しています")
+	prediction, err = s.replicateClient.WaitForPrediction(ctx, prediction.ID, 1*time.Second)
+	if err != nil {
+		return nil, fmt.Errorf("推論の待機に失敗しました: %w", err)
+	}
+	if prediction.Status != replicate.StatusSucceeded {
+		return nil, fmt.Errorf("Inpainting推論に失敗しました: %s", prediction.Error)
+	}
+
+	resultURL := replicate.ParseSDXLInpaintingOutput(prediction)
+	if resultURL == "" {
+		return nil, fmt.Errorf("Inpaintingが出力を返しませんでした")
+	}
+
+	update(70, "修正結果をダウンロードしています")
+	resultData, err := s.replicateClient.DownloadOutput(ctx, resultURL)
+	if err != nil {
+		return nil, fmt.Errorf("修正結果のダウンロードに失敗しました: %w", err)
+	}
+
+	if s.objectStore != nil {
+		if _, err := s.objectStore.PutDataURL(context.Background(), maskObjectKey(input.ProjectID, job.ID, input.MaskDataURL), input.MaskDataURL); err != nil {
+			return nil, fmt.Errorf("store inpainting mask object: %w", err)
+		}
+	}
+
+	frame.Kind = domain.FrameKindInpainted
+	frame.Note = input.Prompt
+	frame.UpdatedAt = now()
+
+	if s.objectStore != nil {
+		update(85, "修正結果を保存しています")
+		frameKey := fmt.Sprintf("projects/%s/frames/%s.png", input.ProjectID, input.FrameID)
+		object, err := s.objectStore.PutBytes(ctx, frameKey, "image/png", resultData)
+		if err != nil {
+			return nil, fmt.Errorf("修正結果の保存に失敗しました: %w", err)
+		}
+		frame.ImageURL = object.URL
+		frame.ThumbnailURL = object.URL
+	} else {
+		frame.ImageURL = demoImage("INPAINT", 146)
+		frame.ThumbnailURL = frame.ImageURL
+	}
+
+	if err := s.store.UpsertFrame(frame); err != nil {
+		return nil, err
+	}
+
+	return domain.InpaintFrameResult{Frame: frame}, nil
+}
+
+func (s *StudioService) inpaintFrameDemo(job domain.Job, input domain.InpaintFrameRequest, update func(int, string)) (any, error) {
+	update(28, "マスク領域を解析しています")
+	time.Sleep(300 * time.Millisecond)
+	update(72, "プロンプトに沿って部分修正しています")
+	time.Sleep(500 * time.Millisecond)
+
+	frame, ok, err := s.store.FindFrame(input.ProjectID, input.FrameID)
+	if err != nil {
+		return nil, err
+	}
+	if !ok {
+		return nil, fmt.Errorf("frame not found")
+	}
+	if s.objectStore != nil {
+		if _, err := s.objectStore.PutDataURL(context.Background(), maskObjectKey(input.ProjectID, job.ID, input.MaskDataURL), input.MaskDataURL); err != nil {
+			return nil, fmt.Errorf("store inpainting mask object: %w", err)
+		}
+	}
+	frame.Kind = domain.FrameKindInpainted
+	frame.Note = input.Prompt
+	frame.ImageURL = demoImage("INPAINT", 146)
+	frame.ThumbnailURL = frame.ImageURL
+	frame.UpdatedAt = now()
+	if s.objectStore != nil {
+		if err := s.storeFrameImage(context.Background(), &frame, "frames"); err != nil {
+			return nil, err
+		}
+	}
+	if err := s.store.UpsertFrame(frame); err != nil {
+		return nil, err
+	}
+
+	return domain.InpaintFrameResult{Frame: frame}, nil
 }
 
 func (s *StudioService) UpdateFrame(ctx context.Context, input domain.UpdateFrameRequest) (domain.Frame, error) {

@@ -71,6 +71,7 @@ export function jobSchema<T extends z.ZodTypeAny>(resultSchema: T = z.unknown() 
 
 export const generateFramesResultSchema = z.object({
   frames: z.array(frameSchema),
+  rawVideoUrl: z.string().optional(),
 })
 
 export const inpaintFrameResultSchema = z.object({

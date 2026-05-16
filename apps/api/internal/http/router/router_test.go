@@ -407,6 +407,15 @@ func (failingObjectStore) PutDataURL(_ context.Context, key string, dataURL stri
 	}, nil
 }
 
+func (failingObjectStore) PutBytes(_ context.Context, key string, contentType string, data []byte) (domain.StorageObject, error) {
+	return domain.StorageObject{
+		Key:         key,
+		URL:         "https://assets.example.test/" + key,
+		ContentType: contentType,
+		Size:        int64(len(data)),
+	}, nil
+}
+
 func performJSON(t *testing.T, e *echo.Echo, method string, path string, body any) *httptest.ResponseRecorder {
 	t.Helper()
 
