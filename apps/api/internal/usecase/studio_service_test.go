@@ -130,6 +130,68 @@ func TestUpdateFrameMarksFrameEdited(t *testing.T) {
 	}
 }
 
+func TestFrameMetadataDeleteAndReorder(t *testing.T) {
+	service := NewStudioService()
+	job := service.GenerateFrames(domain.GenerateFramesRequest{
+		ProjectID:  "project-1",
+		FrameCount: 3,
+	})
+	waitForJob(t, service, job.ID)
+
+	frames, err := service.ListFrames("project-1")
+	if err != nil {
+		t.Fatalf("list frames failed: %v", err)
+	}
+	note := "needs cleanup"
+	kind := domain.FrameKindEdited
+	updated, ok, err := service.UpdateFrameMetadata(domain.UpdateFrameMetadataRequest{
+		ProjectID: "project-1",
+		FrameID:   frames[1].ID,
+		Kind:      &kind,
+		Note:      &note,
+	})
+	if err != nil {
+		t.Fatalf("update frame metadata failed: %v", err)
+	}
+	if !ok {
+		t.Fatalf("expected frame to be found")
+	}
+	if updated.Kind != domain.FrameKindEdited || updated.Note != note {
+		t.Fatalf("unexpected metadata update: %#v", updated)
+	}
+
+	reordered, err := service.ReorderFrames(domain.ReorderFramesRequest{
+		ProjectID: "project-1",
+		FrameIDs:  []string{frames[2].ID, frames[1].ID, frames[0].ID, frames[3].ID, frames[4].ID},
+	})
+	if err != nil {
+		t.Fatalf("reorder frames failed: %v", err)
+	}
+	if reordered[0].ID != frames[2].ID || reordered[0].Index != 0 {
+		t.Fatalf("expected frame %s at index 0, got %#v", frames[2].ID, reordered[0])
+	}
+
+	deleted, err := service.DeleteFrame("project-1", frames[1].ID)
+	if err != nil {
+		t.Fatalf("delete frame failed: %v", err)
+	}
+	if !deleted {
+		t.Fatalf("expected frame to be deleted")
+	}
+	remaining, err := service.ListFrames("project-1")
+	if err != nil {
+		t.Fatalf("list frames failed: %v", err)
+	}
+	if len(remaining) != 4 {
+		t.Fatalf("expected 4 remaining frames, got %d", len(remaining))
+	}
+	for index, frame := range remaining {
+		if frame.Index != index {
+			t.Fatalf("expected compact frame index %d, got %d", index, frame.Index)
+		}
+	}
+}
+
 func waitForJob(t *testing.T, service *StudioService, jobID string) domain.Job {
 	t.Helper()
 

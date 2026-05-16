@@ -84,6 +84,31 @@ func TestStudioWorkflowRoutes(t *testing.T) {
 	}
 
 	target := framesPayload.Frames[1]
+	metadataRes := performJSON(t, e, http.MethodPut, "/projects/"+projectID+"/frames/"+target.ID+"/metadata", map[string]any{
+		"kind": "edited",
+		"note": "metadata cleanup",
+	})
+	if metadataRes.Code != http.StatusOK {
+		t.Fatalf("expected metadata status %d, got %d: %s", http.StatusOK, metadataRes.Code, metadataRes.Body.String())
+	}
+
+	reorderRes := performJSON(t, e, http.MethodPut, "/projects/"+projectID+"/frames/reorder", map[string]any{
+		"frameIds": []string{
+			framesPayload.Frames[1].ID,
+			framesPayload.Frames[0].ID,
+			framesPayload.Frames[2].ID,
+			framesPayload.Frames[3].ID,
+		},
+	})
+	if reorderRes.Code != http.StatusOK {
+		t.Fatalf("expected reorder status %d, got %d: %s", http.StatusOK, reorderRes.Code, reorderRes.Body.String())
+	}
+	var reorderPayload domain.ReorderFramesResult
+	decodeJSON(t, reorderRes, &reorderPayload)
+	if reorderPayload.Frames[0].ID != target.ID || reorderPayload.Frames[0].Index != 0 {
+		t.Fatalf("unexpected reorder result: %#v", reorderPayload.Frames)
+	}
+
 	updateRes := performJSON(t, e, http.MethodPut, "/projects/"+projectID+"/frames/"+target.ID, map[string]any{
 		"imageDataUrl": "data:image/png;base64,edited",
 		"note":         "cleanup pass",
@@ -100,6 +125,11 @@ func TestStudioWorkflowRoutes(t *testing.T) {
 	if updatePayload.Frame.ImageURL != "data:image/png;base64,edited" {
 		t.Fatalf("expected updated image data URL, got %q", updatePayload.Frame.ImageURL)
 	}
+
+	deleteRes := performJSON(t, e, http.MethodDelete, "/projects/"+projectID+"/frames/"+target.ID, nil)
+	if deleteRes.Code != http.StatusNoContent {
+		t.Fatalf("expected delete status %d, got %d: %s", http.StatusNoContent, deleteRes.Code, deleteRes.Body.String())
+	}
 }
 
 func TestStudioUpdateRouteReturnsNotFoundForMissingFrame(t *testing.T) {
@@ -112,6 +142,20 @@ func TestStudioUpdateRouteReturnsNotFoundForMissingFrame(t *testing.T) {
 		t.Fatalf("expected status %d, got %d: %s", http.StatusNotFound, res.Code, res.Body.String())
 	}
 	assertErrorResponse(t, res, "Not Found", "frame not found")
+
+	metadataRes := performJSON(t, e, http.MethodPut, "/projects/missing-project/frames/missing-frame/metadata", map[string]any{
+		"note": "missing",
+	})
+	if metadataRes.Code != http.StatusNotFound {
+		t.Fatalf("expected metadata status %d, got %d: %s", http.StatusNotFound, metadataRes.Code, metadataRes.Body.String())
+	}
+	assertErrorResponse(t, metadataRes, "Not Found", "frame not found")
+
+	deleteRes := performJSON(t, e, http.MethodDelete, "/projects/missing-project/frames/missing-frame", nil)
+	if deleteRes.Code != http.StatusNotFound {
+		t.Fatalf("expected delete status %d, got %d: %s", http.StatusNotFound, deleteRes.Code, deleteRes.Body.String())
+	}
+	assertErrorResponse(t, deleteRes, "Not Found", "frame not found")
 }
 
 func TestStudioProjectRoutesReturnNotFound(t *testing.T) {
@@ -236,6 +280,26 @@ func TestStudioRoutesRejectInvalidRequests(t *testing.T) {
 			name:   "update missing image",
 			method: http.MethodPut,
 			path:   "/projects/project-1/frames/frame-1",
+			body:   map[string]any{},
+		},
+		{
+			name:   "metadata update missing fields",
+			method: http.MethodPut,
+			path:   "/projects/project-1/frames/frame-1/metadata",
+			body:   map[string]any{},
+		},
+		{
+			name:   "metadata update invalid kind",
+			method: http.MethodPut,
+			path:   "/projects/project-1/frames/frame-1/metadata",
+			body: map[string]any{
+				"kind": "unknown",
+			},
+		},
+		{
+			name:   "reorder missing ids",
+			method: http.MethodPut,
+			path:   "/projects/project-1/frames/reorder",
 			body:   map[string]any{},
 		},
 		{

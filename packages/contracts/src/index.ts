@@ -91,6 +91,22 @@ export type UpdateFrameResult = {
   frame: Frame
 }
 
+export type UpdateFrameMetadataRequest = {
+  projectId: string
+  frameId: string
+  kind?: FrameKind
+  note?: string
+}
+
+export type ReorderFramesRequest = {
+  projectId: string
+  frameIds: string[]
+}
+
+export type ReorderFramesResult = {
+  frames: Frame[]
+}
+
 export type ExportVideoRequest = {
   projectId: string
   fps: number

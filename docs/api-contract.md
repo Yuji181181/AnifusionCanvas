@@ -238,6 +238,91 @@ Validation:
 - `imageDataUrl` is required.
 - `imageDataUrl` must start with `data:`.
 
+### `PUT /projects/:projectId/frames/:frameId/metadata`
+
+Request:
+
+```ts
+type UpdateFrameMetadataRequest = {
+  projectId: string
+  frameId: string
+  kind?: FrameKind
+  note?: string
+}
+```
+
+`projectId` and `frameId` are overwritten from the path parameters by the API layer.
+
+Response:
+
+```ts
+type UpdateFrameResult = {
+  frame: Frame
+}
+```
+
+Validation:
+
+- `projectId` is required.
+- `frameId` is required.
+- At least one of `kind` or `note` is required.
+- `kind`, when present, must be one of `key`, `generated`, `inpainted`, or `edited`.
+
+Errors:
+
+- Returns `404` when the frame does not exist.
+
+### `DELETE /projects/:projectId/frames/:frameId`
+
+Response:
+
+```ts
+type DeleteFrameResponse = void
+```
+
+Validation:
+
+- `projectId` is required.
+- `frameId` is required.
+
+Behavior:
+
+- Deletes the frame.
+- Compacts the remaining frame indexes in ascending timeline order.
+
+Errors:
+
+- Returns `404` when the frame does not exist.
+
+### `PUT /projects/:projectId/frames/reorder`
+
+Request:
+
+```ts
+type ReorderFramesRequest = {
+  projectId: string
+  frameIds: string[]
+}
+```
+
+`projectId` is overwritten from the `:projectId` path parameter by the API layer.
+
+Response:
+
+```ts
+type ReorderFramesResult = {
+  frames: Frame[]
+}
+```
+
+Validation:
+
+- `projectId` is required.
+- `frameIds` must not be empty.
+- `frameIds` must not contain blank values.
+- `frameIds` must not contain duplicate values.
+- `frameIds` must include every current frame in the project exactly once.
+
 ### `POST /inference/generate`
 
 Request:

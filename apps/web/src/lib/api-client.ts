@@ -12,7 +12,10 @@ import type {
   InpaintFrameResponse,
   ListFramesResponse,
   ProjectResponse,
+  ReorderFramesRequest,
+  ReorderFramesResult,
   UpdateFrameRequest,
+  UpdateFrameMetadataRequest,
   UpdateFrameResult,
   UpdateProjectRequest,
 } from '@anifusion/contracts'
@@ -30,6 +33,10 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
   if (!response.ok) {
     const message = await errorMessage(response)
     throw new Error(message || `API request failed: ${response.status}`)
+  }
+
+  if (response.status === 204) {
+    return undefined as T
   }
 
   return response.json() as Promise<T>
@@ -95,6 +102,23 @@ export const apiClient = {
   },
   updateFrame(input: UpdateFrameRequest) {
     return request<UpdateFrameResult>(`/projects/${pathParam(input.projectId)}/frames/${pathParam(input.frameId)}`, {
+      method: 'PUT',
+      body: JSON.stringify(input),
+    })
+  },
+  updateFrameMetadata(input: UpdateFrameMetadataRequest) {
+    return request<UpdateFrameResult>(`/projects/${pathParam(input.projectId)}/frames/${pathParam(input.frameId)}/metadata`, {
+      method: 'PUT',
+      body: JSON.stringify(input),
+    })
+  },
+  deleteFrame(projectId: string, frameId: string) {
+    return request<void>(`/projects/${pathParam(projectId)}/frames/${pathParam(frameId)}`, {
+      method: 'DELETE',
+    })
+  },
+  reorderFrames(input: ReorderFramesRequest) {
+    return request<ReorderFramesResult>(`/projects/${pathParam(input.projectId)}/frames/reorder`, {
       method: 'PUT',
       body: JSON.stringify(input),
     })
