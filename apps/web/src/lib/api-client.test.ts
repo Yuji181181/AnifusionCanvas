@@ -261,6 +261,24 @@ describe('apiClient', () => {
     await expect(apiClient.listFrames('')).rejects.toThrow('projectId is required')
   })
 
+  it('rejects API responses that do not match the schema', async () => {
+    mockFetch({
+      frames: [
+        {
+          id: 'frame-1',
+          projectId: 'project-1',
+          index: 0,
+          imageUrl: 'data:image/png;base64,frame',
+          thumbnailUrl: 'data:image/png;base64,frame',
+          kind: 'unexpected',
+          updatedAt: '2026-05-17T00:00:00Z',
+        },
+      ],
+    })
+
+    await expect(apiClient.listFrames('project-1')).rejects.toThrow()
+  })
+
   it('falls back to response text for non-JSON failed requests', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response('service unavailable', { status: 503 })))
 
