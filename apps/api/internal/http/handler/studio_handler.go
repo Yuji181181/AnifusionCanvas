@@ -172,6 +172,89 @@ func (h *StudioHandler) UpdateFrame(c echo.Context) error {
 	return c.JSON(http.StatusOK, domain.UpdateFrameResult{Frame: frame})
 }
 
+func (h *StudioHandler) UpdateFrameMetadata(c echo.Context) error {
+	var input domain.UpdateFrameMetadataRequest
+	if err := c.Bind(&input); err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+	}
+	input.ProjectID = c.Param("projectId")
+	input.FrameID = c.Param("frameId")
+	if isBlank(input.ProjectID) {
+		return echo.NewHTTPError(http.StatusBadRequest, "projectId is required")
+	}
+	if isBlank(input.FrameID) {
+		return echo.NewHTTPError(http.StatusBadRequest, "frameId is required")
+	}
+	if input.Kind == nil && input.Note == nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "kind or note is required")
+	}
+	if input.Kind != nil && !isValidFrameKind(*input.Kind) {
+		return echo.NewHTTPError(http.StatusBadRequest, "kind is invalid")
+	}
+
+	frame, ok, err := h.service.UpdateFrameMetadata(input)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
+	}
+	if !ok {
+		return echo.NewHTTPError(http.StatusNotFound, "frame not found")
+	}
+
+	return c.JSON(http.StatusOK, domain.UpdateFrameResult{Frame: frame})
+}
+
+func (h *StudioHandler) DeleteFrame(c echo.Context) error {
+	projectID := c.Param("projectId")
+	frameID := c.Param("frameId")
+	if isBlank(projectID) {
+		return echo.NewHTTPError(http.StatusBadRequest, "projectId is required")
+	}
+	if isBlank(frameID) {
+		return echo.NewHTTPError(http.StatusBadRequest, "frameId is required")
+	}
+
+	deleted, err := h.service.DeleteFrame(projectID, frameID)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
+	}
+	if !deleted {
+		return echo.NewHTTPError(http.StatusNotFound, "frame not found")
+	}
+
+	return c.NoContent(http.StatusNoContent)
+}
+
+func (h *StudioHandler) ReorderFrames(c echo.Context) error {
+	var input domain.ReorderFramesRequest
+	if err := c.Bind(&input); err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+	}
+	input.ProjectID = c.Param("projectId")
+	if isBlank(input.ProjectID) {
+		return echo.NewHTTPError(http.StatusBadRequest, "projectId is required")
+	}
+	if len(input.FrameIDs) == 0 {
+		return echo.NewHTTPError(http.StatusBadRequest, "frameIds is required")
+	}
+	seen := make(map[string]struct{}, len(input.FrameIDs))
+	for _, frameID := range input.FrameIDs {
+		if isBlank(frameID) {
+			return echo.NewHTTPError(http.StatusBadRequest, "frameIds must not contain blank values")
+		}
+		if _, ok := seen[frameID]; ok {
+			return echo.NewHTTPError(http.StatusBadRequest, "frameIds must not contain duplicate values")
+		}
+		seen[frameID] = struct{}{}
+	}
+
+	frames, err := h.service.ReorderFrames(input)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+	}
+
+	return c.JSON(http.StatusOK, domain.ReorderFramesResult{Frames: frames})
+}
+
 func (h *StudioHandler) ExportVideo(c echo.Context) error {
 	var input domain.ExportVideoRequest
 	if err := c.Bind(&input); err != nil {
@@ -213,4 +296,13 @@ func isBlank(value string) bool {
 
 func isDataURL(value string) bool {
 	return strings.HasPrefix(strings.TrimSpace(value), "data:")
+}
+
+func isValidFrameKind(kind domain.FrameKind) bool {
+	switch kind {
+	case domain.FrameKindKey, domain.FrameKindGenerated, domain.FrameKindInpainted, domain.FrameKindEdited:
+		return true
+	default:
+		return false
+	}
 }

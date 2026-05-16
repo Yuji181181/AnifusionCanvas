@@ -99,6 +99,22 @@ type UpdateFrameResult struct {
 	Frame Frame `json:"frame"`
 }
 
+type UpdateFrameMetadataRequest struct {
+	ProjectID string     `json:"projectId"`
+	FrameID   string     `json:"frameId"`
+	Kind      *FrameKind `json:"kind,omitempty"`
+	Note      *string    `json:"note,omitempty"`
+}
+
+type ReorderFramesRequest struct {
+	ProjectID string   `json:"projectId"`
+	FrameIDs  []string `json:"frameIds"`
+}
+
+type ReorderFramesResult struct {
+	Frames []Frame `json:"frames"`
+}
+
 type ExportVideoRequest struct {
 	ProjectID string `json:"projectId"`
 	FPS       int    `json:"fps"`

@@ -1,6 +1,7 @@
 package usecase
 
 import (
+	"fmt"
 	"sync"
 
 	"github.com/haseg/anifusion-canvas/apps/api/internal/domain"
@@ -115,6 +116,81 @@ func (s *MemoryStudioStore) UpsertFrame(next domain.Frame) error {
 
 	s.frames[next.ProjectID] = append(frames, next)
 	return nil
+}
+
+func (s *MemoryStudioStore) UpdateFrameMetadata(input domain.UpdateFrameMetadataRequest) (domain.Frame, bool, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	frames := s.frames[input.ProjectID]
+	for index, frame := range frames {
+		if frame.ID == input.FrameID {
+			if input.Kind != nil {
+				frame.Kind = *input.Kind
+			}
+			if input.Note != nil {
+				frame.Note = *input.Note
+			}
+			frame.UpdatedAt = now()
+			frames[index] = frame
+			s.frames[input.ProjectID] = frames
+			return frame, true, nil
+		}
+	}
+
+	return domain.Frame{}, false, nil
+}
+
+func (s *MemoryStudioStore) DeleteFrame(projectID string, frameID string) (bool, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	frames := s.frames[projectID]
+	next := frames[:0]
+	deleted := false
+	for _, frame := range frames {
+		if frame.ID == frameID {
+			deleted = true
+			continue
+		}
+		frame.Index = len(next)
+		frame.UpdatedAt = now()
+		next = append(next, frame)
+	}
+	if !deleted {
+		return false, nil
+	}
+	s.frames[projectID] = append([]domain.Frame(nil), next...)
+	return true, nil
+}
+
+func (s *MemoryStudioStore) ReorderFrames(projectID string, frameIDs []string) ([]domain.Frame, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	frames := s.frames[projectID]
+	byID := make(map[string]domain.Frame, len(frames))
+	for _, frame := range frames {
+		byID[frame.ID] = frame
+	}
+
+	reordered := make([]domain.Frame, 0, len(frameIDs))
+	for index, frameID := range frameIDs {
+		frame, ok := byID[frameID]
+		if !ok {
+			return nil, fmt.Errorf("frame not found: %s", frameID)
+		}
+		frame.Index = index
+		frame.UpdatedAt = now()
+		reordered = append(reordered, frame)
+		delete(byID, frameID)
+	}
+	if len(byID) > 0 {
+		return nil, fmt.Errorf("frameIds must include every frame in the project")
+	}
+
+	s.frames[projectID] = reordered
+	return append([]domain.Frame(nil), reordered...), nil
 }
 
 func (s *MemoryStudioStore) CreateJob(job domain.Job) error {

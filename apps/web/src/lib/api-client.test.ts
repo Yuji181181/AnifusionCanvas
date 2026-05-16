@@ -116,6 +116,77 @@ describe('apiClient', () => {
     )
   })
 
+  it('sends frame metadata update requests as JSON', async () => {
+    const fetchMock = mockFetch({
+      frame: {
+        id: 'frame/1',
+        projectId: 'project with space',
+        index: 1,
+        imageUrl: 'data:image/png;base64,edited',
+        thumbnailUrl: 'data:image/png;base64,edited',
+        kind: 'edited',
+        note: 'cleanup',
+        updatedAt: '2026-05-17T00:00:00Z',
+      },
+    })
+
+    await apiClient.updateFrameMetadata({
+      projectId: 'project with space',
+      frameId: 'frame/1',
+      kind: 'edited',
+      note: 'cleanup',
+    })
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      'http://localhost:8080/projects/project%20with%20space/frames/frame%2F1/metadata',
+      expect.objectContaining({
+        body: JSON.stringify({
+          projectId: 'project with space',
+          frameId: 'frame/1',
+          kind: 'edited',
+          note: 'cleanup',
+        }),
+        headers: expect.objectContaining({ 'content-type': 'application/json' }),
+        method: 'PUT',
+      }),
+    )
+  })
+
+  it('sends frame reorder requests as JSON', async () => {
+    const fetchMock = mockFetch({ frames: [] })
+
+    await apiClient.reorderFrames({
+      projectId: 'project with space',
+      frameIds: ['frame/2', 'frame/1'],
+    })
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      'http://localhost:8080/projects/project%20with%20space/frames/reorder',
+      expect.objectContaining({
+        body: JSON.stringify({
+          projectId: 'project with space',
+          frameIds: ['frame/2', 'frame/1'],
+        }),
+        headers: expect.objectContaining({ 'content-type': 'application/json' }),
+        method: 'PUT',
+      }),
+    )
+  })
+
+  it('handles no-content frame deletion responses', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response(null, { status: 204 }))
+    vi.stubGlobal('fetch', fetchMock)
+
+    await expect(apiClient.deleteFrame('project with space', 'frame/1')).resolves.toBeUndefined()
+    expect(fetchMock).toHaveBeenCalledWith(
+      'http://localhost:8080/projects/project%20with%20space/frames/frame%2F1',
+      expect.objectContaining({
+        headers: expect.objectContaining({ 'content-type': 'application/json' }),
+        method: 'DELETE',
+      }),
+    )
+  })
+
   it('encodes job IDs when fetching a job', async () => {
     const fetchMock = mockFetch({
       job: {

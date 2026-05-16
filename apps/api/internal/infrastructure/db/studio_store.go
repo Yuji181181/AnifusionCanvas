@@ -221,6 +221,118 @@ func (s *StudioStore) UpsertFrame(frame domain.Frame) error {
 	return tx.Commit()
 }
 
+func (s *StudioStore) UpdateFrameMetadata(input domain.UpdateFrameMetadataRequest) (domain.Frame, bool, error) {
+	frame, ok, err := s.FindFrame(input.ProjectID, input.FrameID)
+	if err != nil {
+		return domain.Frame{}, false, err
+	}
+	if !ok {
+		return domain.Frame{}, false, nil
+	}
+	if input.Kind != nil {
+		frame.Kind = *input.Kind
+	}
+	if input.Note != nil {
+		frame.Note = *input.Note
+	}
+	if err := s.UpsertFrame(frame); err != nil {
+		return domain.Frame{}, false, err
+	}
+
+	updated, ok, err := s.FindFrame(input.ProjectID, input.FrameID)
+	if err != nil {
+		return domain.Frame{}, false, err
+	}
+	return updated, ok, nil
+}
+
+func (s *StudioStore) DeleteFrame(projectID string, frameID string) (bool, error) {
+	tx, err := s.db.Begin()
+	if err != nil {
+		return false, err
+	}
+	defer tx.Rollback()
+
+	result, err := tx.Exec(`DELETE FROM studio_frames WHERE project_id = ? AND id = ?`, projectID, frameID)
+	if err != nil {
+		return false, err
+	}
+	count, err := result.RowsAffected()
+	if err != nil {
+		return false, err
+	}
+	if count == 0 {
+		return false, nil
+	}
+
+	rows, err := tx.Query(`
+SELECT id
+FROM studio_frames
+WHERE project_id = ?
+ORDER BY frame_index ASC`, projectID)
+	if err != nil {
+		return false, err
+	}
+	frameIDs := make([]string, 0)
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			rows.Close()
+			return false, err
+		}
+		frameIDs = append(frameIDs, id)
+	}
+	if err := rows.Err(); err != nil {
+		rows.Close()
+		return false, err
+	}
+	rows.Close()
+
+	if err := reorderFramesTx(tx, projectID, frameIDs); err != nil {
+		return false, err
+	}
+
+	return true, tx.Commit()
+}
+
+func (s *StudioStore) ReorderFrames(projectID string, frameIDs []string) ([]domain.Frame, error) {
+	tx, err := s.db.Begin()
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Rollback()
+
+	var count int
+	if err := tx.QueryRow(`SELECT COUNT(*) FROM studio_frames WHERE project_id = ?`, projectID).Scan(&count); err != nil {
+		return nil, err
+	}
+	if count != len(frameIDs) {
+		return nil, fmt.Errorf("frameIds must include every frame in the project")
+	}
+	seen := make(map[string]struct{}, len(frameIDs))
+	for _, frameID := range frameIDs {
+		if _, ok := seen[frameID]; ok {
+			return nil, fmt.Errorf("frameIds must not contain duplicate values")
+		}
+		seen[frameID] = struct{}{}
+		var exists int
+		if err := tx.QueryRow(`SELECT COUNT(*) FROM studio_frames WHERE project_id = ? AND id = ?`, projectID, frameID).Scan(&exists); err != nil {
+			return nil, err
+		}
+		if exists == 0 {
+			return nil, fmt.Errorf("frame not found: %s", frameID)
+		}
+	}
+	if err := reorderFramesTx(tx, projectID, frameIDs); err != nil {
+		return nil, err
+	}
+	if err := tx.Commit(); err != nil {
+		return nil, err
+	}
+
+	return s.ListFrames(projectID)
+}
+
 func (s *StudioStore) CreateJob(job domain.Job) error {
 	_, err := s.db.Exec(`
 INSERT INTO studio_jobs (
@@ -371,6 +483,26 @@ ON DUPLICATE KEY UPDATE
 		nullString(frame.Note),
 	)
 	return err
+}
+
+func reorderFramesTx(tx *sql.Tx, projectID string, frameIDs []string) error {
+	for index, frameID := range frameIDs {
+		if _, err := tx.Exec(`
+UPDATE studio_frames
+SET frame_index = ?
+WHERE project_id = ? AND id = ?`, -100000-index, projectID, frameID); err != nil {
+			return err
+		}
+	}
+	for index, frameID := range frameIDs {
+		if _, err := tx.Exec(`
+UPDATE studio_frames
+SET frame_index = ?
+WHERE project_id = ? AND id = ?`, index, projectID, frameID); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func nullString(value string) sql.NullString {

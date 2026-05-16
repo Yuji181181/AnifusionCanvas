@@ -17,6 +17,9 @@ type StudioStore interface {
 	ReplaceFrames(projectID string, frames []domain.Frame) error
 	FindFrame(projectID string, frameID string) (domain.Frame, bool, error)
 	UpsertFrame(frame domain.Frame) error
+	UpdateFrameMetadata(input domain.UpdateFrameMetadataRequest) (domain.Frame, bool, error)
+	DeleteFrame(projectID string, frameID string) (bool, error)
+	ReorderFrames(projectID string, frameIDs []string) ([]domain.Frame, error)
 	CreateJob(job domain.Job) error
 	UpdateJob(job domain.Job) error
 	GetJob(jobID string) (domain.Job, bool, error)
@@ -149,6 +152,18 @@ func (s *StudioService) UpdateFrame(input domain.UpdateFrameRequest) (domain.Fra
 	}
 
 	return frame, nil
+}
+
+func (s *StudioService) UpdateFrameMetadata(input domain.UpdateFrameMetadataRequest) (domain.Frame, bool, error) {
+	return s.store.UpdateFrameMetadata(input)
+}
+
+func (s *StudioService) DeleteFrame(projectID string, frameID string) (bool, error) {
+	return s.store.DeleteFrame(projectID, frameID)
+}
+
+func (s *StudioService) ReorderFrames(input domain.ReorderFramesRequest) ([]domain.Frame, error) {
+	return s.store.ReorderFrames(input.ProjectID, input.FrameIDs)
 }
 
 func (s *StudioService) ExportVideo(input domain.ExportVideoRequest) domain.Job {
