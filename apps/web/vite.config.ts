@@ -3,6 +3,18 @@ import react from '@vitejs/plugin-react'
 import { fileURLToPath, URL } from 'node:url'
 
 export default defineConfig({
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          canvas: ['fabric'],
+          query: ['@tanstack/react-query'],
+          react: ['react', 'react-dom'],
+          router: ['@tanstack/react-router'],
+        },
+      },
+    },
+  },
   plugins: [react()],
   resolve: {
     alias: {
