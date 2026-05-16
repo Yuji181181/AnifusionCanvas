@@ -1,6 +1,6 @@
 import { useMutation } from '@tanstack/react-query'
-import { Circle, MousePointer2, PenLine, Redo, Save, Square, Trash2, Type, Undo } from 'lucide-react'
-import { Canvas, Circle as FabricCircle, PencilBrush, Rect, Textbox } from 'fabric'
+import { Circle, MousePointer2, PenLine, Redo, Save, SlidersHorizontal, Square, Sun, Trash2, Type, Undo } from 'lucide-react'
+import { Canvas, Circle as FabricCircle, PencilBrush, Rect, Textbox, filters } from 'fabric'
 import { useCallback, useEffect, useRef } from 'react'
 import { apiClient } from '@/lib/api-client'
 import { queryClient } from '@/lib/query-client'
@@ -29,6 +29,7 @@ export function EditorPanel() {
   const canvasElementRef = useRef<HTMLCanvasElement | null>(null)
   const fabricRef = useRef<Canvas | null>(null)
   const undoManagerRef = useRef<UndoManager | null>(null)
+  const frameImageRef = useRef<fabric.Image | null>(null)
 
   useEffect(() => {
     if (!canvasElementRef.current) {
@@ -45,15 +46,19 @@ export function EditorPanel() {
     undoManagerRef.current = undoManager
 
     if (frame?.imageUrl) {
-      canvas.backgroundImage = undefined
-      const image = new Image()
-      image.crossOrigin = 'anonymous'
-      image.onload = () => {
-        canvas.getContext().drawImage(image, 0, 0, 960, 540)
-        canvas.renderAll()
-        undoManager.save()
-      }
-      image.src = frame.imageUrl
+      fabric.Image.fromURL(
+        frame.imageUrl,
+        (img) => {
+          img.set({ selectable: true, evented: true })
+          img.scaleToWidth(960)
+          canvas.add(img)
+          canvas.sendObjectToBack(img)
+          frameImageRef.current = img
+          canvas.renderAll()
+          undoManager.save()
+        },
+        { crossOrigin: 'anonymous' },
+      )
     } else {
       undoManager.save()
     }
@@ -65,6 +70,7 @@ export function EditorPanel() {
       canvas.dispose()
       fabricRef.current = null
       undoManagerRef.current = null
+      frameImageRef.current = null
     }
   }, [frame?.id, frame?.imageUrl])
 
@@ -133,6 +139,44 @@ export function EditorPanel() {
     undoManagerRef.current?.redo()
   }
 
+  function applyFilter(filterType: string, value: number) {
+    const canvas = fabricRef.current
+    if (!canvas) {
+      return
+    }
+
+    const active = canvas.getActiveObject() || frameImageRef.current
+    if (!active || active.type !== 'image') {
+      return
+    }
+
+    const img = active as fabric.Image
+    const existing = (img.filters ?? []).filter((f) => f.type !== filterType)
+    let newFilter: filters.BaseFilter | undefined
+
+    switch (filterType) {
+      case 'Brightness':
+        newFilter = new filters.Brightness({ brightness: (value - 50) / 50 })
+        break
+      case 'Contrast':
+        newFilter = new filters.Contrast({ contrast: (value - 50) / 50 })
+        break
+      case 'Saturation':
+        newFilter = new filters.Saturation({ saturation: (value - 50) / 50 })
+        break
+      case 'Blur':
+        newFilter = new filters.Blur({ blur: value / 10 })
+        break
+      default:
+        return
+    }
+
+    img.filters = [...existing, newFilter]
+    img.applyFilters()
+    canvas.renderAll()
+    undoManagerRef.current?.save()
+  }
+
   function saveFrame() {
     const canvas = fabricRef.current
     if (!canvas || !frame) {
@@ -186,6 +230,28 @@ export function EditorPanel() {
           <Save aria-hidden="true" />
           保存
         </button>
+      </div>
+      <div className="toolbar panel">
+        <span className="toolbar-label">
+          <Sun aria-hidden="true" size={16} />
+          明度
+          <input max={100} min={0} onChange={(e) => applyFilter('Brightness', Number(e.target.value))} type="range" />
+        </span>
+        <span className="toolbar-label">
+          <SlidersHorizontal aria-hidden="true" size={16} />
+          コントラスト
+          <input max={100} min={0} onChange={(e) => applyFilter('Contrast', Number(e.target.value))} type="range" />
+        </span>
+        <span className="toolbar-label">
+          <SlidersHorizontal aria-hidden="true" size={16} />
+          彩度
+          <input max={100} min={0} onChange={(e) => applyFilter('Saturation', Number(e.target.value))} type="range" />
+        </span>
+        <span className="toolbar-label">
+          <SlidersHorizontal aria-hidden="true" size={16} />
+          ブラー
+          <input max={50} min={0} onChange={(e) => applyFilter('Blur', Number(e.target.value))} type="range" />
+        </span>
       </div>
       <div className="panel editor-canvas-panel">
         <canvas ref={canvasElementRef} />
