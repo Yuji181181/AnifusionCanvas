@@ -6,10 +6,13 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
 	"github.com/haseg/anifusion-canvas/apps/api/internal/domain"
+	"github.com/haseg/anifusion-canvas/apps/api/internal/infrastructure/media"
 	"github.com/haseg/anifusion-canvas/apps/api/internal/infrastructure/replicate"
 )
 
@@ -152,13 +155,28 @@ func (s *StudioService) generateFramesWithReplicate(job domain.Job, input domain
 
 	var rawVideoURL string
 	if s.objectStore != nil {
-		update(80, "動画を保存しています")
+		update(70, "動画を保存しています")
 		videoKey := fmt.Sprintf("projects/%s/generated/%s.mp4", job.ProjectID, job.ID)
 		videoObj, err := s.objectStore.PutBytes(ctx, videoKey, "video/mp4", videoData)
 		if err != nil {
 			return nil, fmt.Errorf("生成動画の保存に失敗しました: %w", err)
 		}
 		rawVideoURL = videoObj.URL
+
+		update(80, "フレームを分割しています")
+		frames, err := s.splitMP4ToFrames(ctx, job, input, videoData)
+		if err != nil {
+			return nil, fmt.Errorf("フレーム分割に失敗しました: %w", err)
+		}
+
+		if err := s.store.ReplaceFrames(input.ProjectID, frames); err != nil {
+			return nil, err
+		}
+
+		return domain.GenerateFramesResult{
+			Frames:      frames,
+			RawVideoURL: rawVideoURL,
+		}, nil
 	}
 
 	update(90, "タイムラインへ登録しています")
@@ -171,18 +189,6 @@ func (s *StudioService) generateFramesWithReplicate(job domain.Job, input domain
 	}
 	frames = append(frames, s.newFrame(input.ProjectID, input.FrameCount+1, domain.FrameKindKey, input.EndImageDataURL, "end keyframe"))
 
-	if s.objectStore != nil {
-		for index := range frames {
-			prefix := "frames"
-			if frames[index].Kind == domain.FrameKindKey {
-				prefix = "inputs"
-			}
-			if err := s.storeFrameImage(ctx, &frames[index], prefix); err != nil {
-				return nil, err
-			}
-		}
-	}
-
 	if err := s.store.ReplaceFrames(input.ProjectID, frames); err != nil {
 		return nil, err
 	}
@@ -191,6 +197,79 @@ func (s *StudioService) generateFramesWithReplicate(job domain.Job, input domain
 		Frames:      frames,
 		RawVideoURL: rawVideoURL,
 	}, nil
+}
+
+func (s *StudioService) splitMP4ToFrames(ctx context.Context, job domain.Job, input domain.GenerateFramesRequest, videoData []byte) ([]domain.Frame, error) {
+	tmpDir, err := os.MkdirTemp("", "anifusion-tooncrafter-*")
+	if err != nil {
+		return nil, fmt.Errorf("create temp dir: %w", err)
+	}
+	defer os.RemoveAll(tmpDir)
+
+	mp4Path := filepath.Join(tmpDir, "output.mp4")
+	if err := os.WriteFile(mp4Path, videoData, 0o644); err != nil {
+		return nil, fmt.Errorf("write temp MP4: %w", err)
+	}
+
+	framesDir := filepath.Join(tmpDir, "frames")
+	framePaths, err := media.SplitMP4ToFrames(ctx, mp4Path, framesDir)
+	if err != nil {
+		return nil, err
+	}
+
+	generatedFrames := make([]domain.Frame, input.FrameCount)
+	actualCount := len(framePaths)
+	for i := 0; i < input.FrameCount; i++ {
+		var filePath string
+		if i < actualCount {
+			filePath = framePaths[i]
+		} else {
+			filePath = framePaths[actualCount-1]
+		}
+
+		data, err := os.ReadFile(filePath)
+		if err != nil {
+			return nil, fmt.Errorf("read frame file %d: %w", i+1, err)
+		}
+
+		frameID := fmt.Sprintf("frame-%d-%d-gen", i+1, time.Now().UnixNano())
+		objectKey := fmt.Sprintf("projects/%s/frames/%s.png", job.ProjectID, frameID)
+		object, err := s.objectStore.PutBytes(ctx, objectKey, "image/png", data)
+		if err != nil {
+			return nil, fmt.Errorf("store frame %d: %w", i+1, err)
+		}
+
+		generatedFrames[i] = domain.Frame{
+			ID:           frameID,
+			ProjectID:    job.ProjectID,
+			Index:        i + 1,
+			ImageURL:     object.URL,
+			ThumbnailURL: object.URL,
+			Kind:         domain.FrameKindGenerated,
+			Note:         input.Prompt,
+			UpdatedAt:    now(),
+		}
+	}
+
+	frames := make([]domain.Frame, 0, input.FrameCount+2)
+	frames = append(frames, s.newFrame(input.ProjectID, 0, domain.FrameKindKey, input.StartImageDataURL, "start keyframe"))
+
+	startKeyObject, err := s.objectStore.PutDataURL(ctx, projectObjectKey(input.ProjectID, "inputs", frames[0].ID, input.StartImageDataURL), input.StartImageDataURL)
+	if err == nil {
+		frames[0].ImageURL = startKeyObject.URL
+		frames[0].ThumbnailURL = startKeyObject.URL
+	}
+
+	frames = append(frames, generatedFrames...)
+	frames = append(frames, s.newFrame(input.ProjectID, input.FrameCount+1, domain.FrameKindKey, input.EndImageDataURL, "end keyframe"))
+
+	endKeyObject, err := s.objectStore.PutDataURL(ctx, projectObjectKey(input.ProjectID, "inputs", frames[len(frames)-1].ID, input.EndImageDataURL), input.EndImageDataURL)
+	if err == nil {
+		frames[len(frames)-1].ImageURL = endKeyObject.URL
+		frames[len(frames)-1].ThumbnailURL = endKeyObject.URL
+	}
+
+	return frames, nil
 }
 
 func (s *StudioService) generateFramesDemo(job domain.Job, input domain.GenerateFramesRequest, update func(int, string)) (any, error) {

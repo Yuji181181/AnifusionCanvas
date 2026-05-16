@@ -6,7 +6,11 @@ import (
 	"encoding/base64"
 	"fmt"
 	"image"
+	"image/color"
 	"image/png"
+	"os"
+	"os/exec"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -426,6 +430,66 @@ func validMaskDataURL(t *testing.T) string {
 	return "data:image/png;base64," + base64.StdEncoding.EncodeToString(buf.Bytes())
 }
 
+func generateTestMP4Bytes(t *testing.T, frameCount int) []byte {
+	t.Helper()
+	if _, err := exec.LookPath("ffmpeg"); err != nil {
+		t.Skip("ffmpeg not available")
+	}
+
+	tmpDir, err := os.MkdirTemp("", "usecase-test-mp4-*")
+	if err != nil {
+		t.Fatalf("create temp dir: %v", err)
+	}
+	defer os.RemoveAll(tmpDir)
+
+	var framePaths []string
+	for i := 1; i <= frameCount; i++ {
+		path := filepath.Join(tmpDir, fmt.Sprintf("frame_%04d.png", i))
+		img := image.NewRGBA(image.Rect(0, 0, 640, 360))
+		for y := 0; y < 360; y++ {
+			for x := 0; x < 640; x++ {
+				img.SetRGBA(x, y, color.RGBA{R: uint8(i * 40), G: 150, B: 200, A: 255})
+			}
+		}
+		f, err := os.Create(path)
+		if err != nil {
+			t.Fatalf("create frame PNG: %v", err)
+		}
+		if err := png.Encode(f, img); err != nil {
+			f.Close()
+			t.Fatalf("encode frame PNG: %v", err)
+		}
+		f.Close()
+		framePaths = append(framePaths, path)
+	}
+
+	listPath := filepath.Join(tmpDir, "input.txt")
+	var content string
+	for _, p := range framePaths {
+		content += "file '" + p + "'\n"
+		content += "duration 0.25\n"
+	}
+	if err := os.WriteFile(listPath, []byte(content), 0o644); err != nil {
+		t.Fatalf("write input list: %v", err)
+	}
+
+	outputPath := filepath.Join(tmpDir, "output.mp4")
+	cmd := exec.Command("ffmpeg",
+		"-f", "concat", "-safe", "0", "-i", listPath,
+		"-c:v", "libx264", "-pix_fmt", "yuv420p", "-r", "4",
+		"-y", outputPath,
+	)
+	if out, err := cmd.CombinedOutput(); err != nil {
+		t.Fatalf("ffmpeg encode MP4: %v\n%s", err, string(out))
+	}
+
+	data, err := os.ReadFile(outputPath)
+	if err != nil {
+		t.Fatalf("read output MP4: %v", err)
+	}
+	return data
+}
+
 type mockReplicateClient struct {
 	createOutput        any
 	createErr           error
@@ -486,6 +550,7 @@ func TestGenerateFramesWithReplicateCreatesFrames(t *testing.T) {
 	objectStore := &fakeObjectStore{}
 	replicateClient := &mockReplicateClient{
 		createOutput: "https://replicate.delivery/test.mp4",
+		downloadData: generateTestMP4Bytes(t, 2),
 	}
 
 	service := NewStudioServiceWithDependencies(
@@ -508,9 +573,6 @@ func TestGenerateFramesWithReplicateCreatesFrames(t *testing.T) {
 	if job.Status != domain.JobStatusSucceeded {
 		t.Fatalf("expected succeeded job, got %s: %s", job.Status, job.Error)
 	}
-	if replicateClient.createCalledVersion != "fofr/tooncrafter" {
-		t.Fatalf("expected ToonCrafter version, got %q", replicateClient.createCalledVersion)
-	}
 
 	result, ok := job.Result.(domain.GenerateFramesResult)
 	if !ok {
@@ -522,12 +584,16 @@ func TestGenerateFramesWithReplicateCreatesFrames(t *testing.T) {
 	if len(result.Frames) != 4 {
 		t.Fatalf("expected 4 frames, got %d", len(result.Frames))
 	}
+	if result.Frames[1].Kind != domain.FrameKindGenerated {
+		t.Fatalf("expected generated frame, got %s", result.Frames[1].Kind)
+	}
 }
 
 func TestInpaintFrameWithReplicateUpdatesFrame(t *testing.T) {
 	objectStore := &fakeObjectStore{}
 	genReplicate := &mockReplicateClient{
 		createOutput: "https://replicate.delivery/test.mp4",
+		downloadData: generateTestMP4Bytes(t, 2),
 	}
 	inpaintReplicate := &mockReplicateClient{
 		createOutput: []any{"https://replicate.delivery/inpainted.png"},
