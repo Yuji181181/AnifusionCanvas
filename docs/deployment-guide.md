@@ -86,7 +86,6 @@ API が本番で利用する認証情報や接続先を設定する。
 - `R2_ACCESS_KEY_ID`
 - `R2_SECRET_ACCESS_KEY`
 - `R2_BUCKET`
-- `R2_PUBLIC_BASE_URL`
 - `R2_ENDPOINT_URL`
 - `REPLICATE_API_TOKEN`
 - `STUDIO_STORE`
@@ -95,6 +94,7 @@ API が本番で利用する認証情報や接続先を設定する。
 
 - `DATABASE_URL` は **Go MySQL ドライバ互換のDSN** を使う
 - `STUDIO_STORE` は DB-backed store を使う場合 `database` にする
+- `R2_PUBLIC_BASE_URL` は任意。未設定の場合は空文字で動作する
 - 機密情報は将来的には Secret Manager に寄せたほうがよい
 - 最初は env file 運用で問題ない
 
@@ -184,6 +184,18 @@ export GCP_SERVICE_NAME=anifusion-api
 bash infra/cloud-run/deploy.sh
 ```
 
+GitHub Actions から Secret Manager 経由でデプロイする場合は、`Deploy API to Cloud Run via Secret Manager` workflow を実行する。この workflow は以下の Secret Manager secret を必須として参照する。
+
+- `DATABASE_URL`
+- `R2_ACCOUNT_ID`
+- `R2_ACCESS_KEY_ID`
+- `R2_SECRET_ACCESS_KEY`
+- `R2_BUCKET`
+- `R2_ENDPOINT_URL`
+- `REPLICATE_API_TOKEN`
+
+`R2_PUBLIC_BASE_URL` は任意項目のため、Secret Manager 版デプロイでは必須 secret として参照しない。
+
 ### デプロイ後に確認すること
 
 ```bash
@@ -234,6 +246,7 @@ https://anifusion-api-xxxxx-an.a.run.app
 - Cloud Run API: 有効
 - Artifact Registry API: 有効
 - Cloud Build API: 有効
+- Secret Manager API: 有効
 - Cloudflare account ID: `fcd71b61f590ce4fc12a03c221e027cd`
 
 現時点で確定したURLは次。
@@ -242,9 +255,7 @@ https://anifusion-api-xxxxx-an.a.run.app
 - Cloudflare Pages preview deployment: `https://197449f8.anifusion-canvas.pages.dev`
 - Cloudflare Pages production domain: `https://anifusion-canvas.pages.dev`
 
-引き続き未確定なのは次。
-
-- `infra/cloud-run/env.production.yaml` に入れる本番値の恒久管理方法
+本番値の恒久管理は GitHub Actions と Google Secret Manager に寄せている。ローカル用の `infra/cloud-run/env.production.yaml` は、手動デプロイや設定確認のための補助ファイルとして扱う。
 
 ## 9. 私が次にできること
 
