@@ -1,11 +1,12 @@
 import { useMutation } from '@tanstack/react-query'
-import { Circle, MousePointer2, PenLine, Save, Square, Type } from 'lucide-react'
+import { Circle, MousePointer2, PenLine, Redo, Save, Square, Trash2, Type, Undo } from 'lucide-react'
 import { Canvas, Circle as FabricCircle, PencilBrush, Rect, Textbox } from 'fabric'
-import { useEffect, useRef } from 'react'
+import { useCallback, useEffect, useRef } from 'react'
 import { apiClient } from '@/lib/api-client'
 import { queryClient } from '@/lib/query-client'
 import { useEditorStore } from '@/stores/editor-store'
 import { useFrameStore, useSelectedFrame } from '@/stores/frame-store'
+import { UndoManager } from '../lib/undo-manager'
 
 const tools = [
   { id: 'select', icon: MousePointer2, label: '選択' },
@@ -27,6 +28,7 @@ export function EditorPanel() {
   const setBrushSize = useEditorStore((state) => state.setBrushSize)
   const canvasElementRef = useRef<HTMLCanvasElement | null>(null)
   const fabricRef = useRef<Canvas | null>(null)
+  const undoManagerRef = useRef<UndoManager | null>(null)
 
   useEffect(() => {
     if (!canvasElementRef.current) {
@@ -39,6 +41,8 @@ export function EditorPanel() {
       width: 960,
     })
     fabricRef.current = canvas
+    const undoManager = new UndoManager(canvas)
+    undoManagerRef.current = undoManager
 
     if (frame?.imageUrl) {
       canvas.backgroundImage = undefined
@@ -47,13 +51,20 @@ export function EditorPanel() {
       image.onload = () => {
         canvas.getContext().drawImage(image, 0, 0, 960, 540)
         canvas.renderAll()
+        undoManager.save()
       }
       image.src = frame.imageUrl
+    } else {
+      undoManager.save()
     }
+
+    canvas.on('object:modified', () => undoManager.save())
+    canvas.on('path:created', () => undoManager.save())
 
     return () => {
       canvas.dispose()
       fabricRef.current = null
+      undoManagerRef.current = null
     }
   }, [frame?.id, frame?.imageUrl])
 
@@ -80,7 +91,7 @@ export function EditorPanel() {
     },
   })
 
-  function addObject() {
+  const addObject = useCallback(() => {
     const canvas = fabricRef.current
     if (!canvas) {
       return
@@ -96,6 +107,30 @@ export function EditorPanel() {
       canvas.add(new Textbox('修正メモ', { fill: color, fontSize: 42, left: 120, top: 120, width: 260 }))
     }
     canvas.renderAll()
+    undoManagerRef.current?.save()
+  }, [color, tool])
+
+  function deleteSelected() {
+    const canvas = fabricRef.current
+    if (!canvas) {
+      return
+    }
+
+    const active = canvas.getActiveObject()
+    if (active) {
+      canvas.remove(active)
+      canvas.discardActiveObject()
+      canvas.renderAll()
+      undoManagerRef.current?.save()
+    }
+  }
+
+  function handleUndo() {
+    undoManagerRef.current?.undo()
+  }
+
+  function handleRedo() {
+    undoManagerRef.current?.redo()
   }
 
   function saveFrame() {
@@ -126,6 +161,15 @@ export function EditorPanel() {
             <item.icon aria-hidden="true" />
           </button>
         ))}
+        <button className="icon-button" onClick={handleUndo} title="元に戻す" type="button">
+          <Undo aria-hidden="true" />
+        </button>
+        <button className="icon-button" onClick={handleRedo} title="やり直す" type="button">
+          <Redo aria-hidden="true" />
+        </button>
+        <button className="icon-button" onClick={deleteSelected} title="選択オブジェクトを削除" type="button">
+          <Trash2 aria-hidden="true" />
+        </button>
         <input aria-label="色" onChange={(event) => setColor(event.target.value)} type="color" value={color} />
         <input
           aria-label="ブラシサイズ"
