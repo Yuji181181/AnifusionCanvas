@@ -88,7 +88,8 @@ type GenerateFramesRequest struct {
 }
 
 type GenerateFramesResult struct {
-	Frames []Frame `json:"frames"`
+	Frames      []Frame `json:"frames"`
+	RawVideoURL string  `json:"rawVideoUrl,omitempty"`
 }
 
 type InpaintFrameRequest struct {

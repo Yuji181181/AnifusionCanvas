@@ -67,6 +67,7 @@ export type GenerateFramesRequest = {
 
 export type GenerateFramesResult = {
   frames: Frame[]
+  rawVideoUrl?: string
 }
 
 export type GenerateFramesResponse = {

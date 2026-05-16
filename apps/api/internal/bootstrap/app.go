@@ -9,6 +9,7 @@ import (
 	"github.com/haseg/anifusion-canvas/apps/api/internal/http/router"
 	dbinfra "github.com/haseg/anifusion-canvas/apps/api/internal/infrastructure/db"
 	"github.com/haseg/anifusion-canvas/apps/api/internal/infrastructure/dependency"
+	"github.com/haseg/anifusion-canvas/apps/api/internal/infrastructure/replicate"
 	"github.com/haseg/anifusion-canvas/apps/api/internal/infrastructure/storage"
 	"github.com/haseg/anifusion-canvas/apps/api/internal/usecase"
 	"github.com/labstack/echo/v4"
@@ -52,6 +53,16 @@ func NewApp() (*App, error) {
 		objectStore = store
 	}
 	studioService := usecase.NewStudioServiceWithStoreAndObjects(studioStore, objectStore)
+	if cfg.ReplicateAPIToken != "" {
+		replicateClient := replicate.NewClient(cfg.ReplicateAPIToken)
+		studioService = usecase.NewStudioServiceWithDependencies(
+			studioStore,
+			objectStore,
+			replicateClient,
+			cfg.ReplicateToonCrafterVersion,
+			cfg.ReplicateSDXLInpaintingVersion,
+		)
+	}
 	studioHandler := handler.NewStudioHandler(studioService)
 	healthHandler := handler.NewHealthHandler(dependency.NewChecker(cfg))
 	router.Register(e, studioHandler, healthHandler)
