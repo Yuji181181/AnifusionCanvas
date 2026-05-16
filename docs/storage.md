@@ -37,4 +37,5 @@ The current implementation intentionally does not mint signed URLs. Public asset
 - `PutBytes`, `GetObject`, and `DeleteObject` are available for generated files and cleanup flows.
 - `StudioService.UpdateFrame` stores manual edits in R2 when R2 is fully configured.
 - Local development without R2 credentials keeps the previous data URL behavior.
+- R2 upload failures return a `500` API error instead of being reported as a missing frame.
 - Unit tests use a fake S3 client, so CI does not require real R2 credentials.

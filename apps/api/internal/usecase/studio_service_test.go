@@ -2,6 +2,7 @@ package usecase
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
@@ -172,6 +173,32 @@ func TestUpdateFrameStoresEditedFrameObjectWhenConfigured(t *testing.T) {
 	}
 }
 
+func TestUpdateFrameReturnsObjectStoreErrors(t *testing.T) {
+	objectStore := &fakeObjectStore{err: fmt.Errorf("upload failed")}
+	service := NewStudioServiceWithStoreAndObjects(NewMemoryStudioStore(), objectStore)
+	job := service.GenerateFrames(domain.GenerateFramesRequest{
+		ProjectID:  "project-1",
+		FrameCount: 2,
+	})
+	waitForJob(t, service, job.ID)
+	frames, err := service.ListFrames("project-1")
+	if err != nil {
+		t.Fatalf("list frames failed: %v", err)
+	}
+
+	_, err = service.UpdateFrame(context.Background(), domain.UpdateFrameRequest{
+		ProjectID:    "project-1",
+		FrameID:      frames[1].ID,
+		ImageDataURL: "data:image/png;base64,edited",
+	})
+	if err == nil {
+		t.Fatalf("expected update frame to fail")
+	}
+	if err.Error() != "store edited frame object: upload failed" {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
 func TestFrameMetadataDeleteAndReorder(t *testing.T) {
 	service := NewStudioService()
 	job := service.GenerateFrames(domain.GenerateFramesRequest{
@@ -237,11 +264,15 @@ func TestFrameMetadataDeleteAndReorder(t *testing.T) {
 type fakeObjectStore struct {
 	key     string
 	dataURL string
+	err     error
 }
 
 func (s *fakeObjectStore) PutDataURL(_ context.Context, key string, dataURL string) (domain.StorageObject, error) {
 	s.key = key
 	s.dataURL = dataURL
+	if s.err != nil {
+		return domain.StorageObject{}, s.err
+	}
 	return domain.StorageObject{
 		Key:         key,
 		URL:         "https://assets.example.test/" + key,

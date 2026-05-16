@@ -147,7 +147,7 @@
 - [x] frame の `imageUrl` / `thumbnailUrl` を R2 URL として保存する
 - [x] 手動編集保存時も data URL ではなく R2 object として保存する
 - [x] R2 upload / download / delete の単体テストを追加する
-- [ ] R2 失敗時の user-facing error を整備する
+- [x] R2 失敗時の user-facing error を整備する
 
 受け入れ基準:
 

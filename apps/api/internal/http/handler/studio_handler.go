@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"errors"
 	"net/http"
 	"strings"
 
@@ -166,7 +167,10 @@ func (h *StudioHandler) UpdateFrame(c echo.Context) error {
 
 	frame, err := h.service.UpdateFrame(c.Request().Context(), input)
 	if err != nil {
-		return echo.NewHTTPError(http.StatusNotFound, err.Error())
+		if errors.Is(err, usecase.ErrFrameNotFound) {
+			return echo.NewHTTPError(http.StatusNotFound, err.Error())
+		}
+		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
 	}
 
 	return c.JSON(http.StatusOK, domain.UpdateFrameResult{Frame: frame})

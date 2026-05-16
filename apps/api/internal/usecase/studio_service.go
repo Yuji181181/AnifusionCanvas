@@ -3,6 +3,7 @@ package usecase
 import (
 	"context"
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"math"
 	"strings"
@@ -10,6 +11,8 @@ import (
 
 	"github.com/haseg/anifusion-canvas/apps/api/internal/domain"
 )
+
+var ErrFrameNotFound = errors.New("frame not found")
 
 type StudioStore interface {
 	UpsertProject(project domain.Project) (domain.Project, error)
@@ -150,7 +153,7 @@ func (s *StudioService) UpdateFrame(ctx context.Context, input domain.UpdateFram
 		return domain.Frame{}, err
 	}
 	if !ok {
-		return domain.Frame{}, fmt.Errorf("frame not found")
+		return domain.Frame{}, ErrFrameNotFound
 	}
 
 	frame.Kind = domain.FrameKindEdited
@@ -158,7 +161,7 @@ func (s *StudioService) UpdateFrame(ctx context.Context, input domain.UpdateFram
 	if s.objectStore != nil {
 		object, err := s.objectStore.PutDataURL(ctx, editedFrameObjectKey(input.ProjectID, input.FrameID, input.ImageDataURL), input.ImageDataURL)
 		if err != nil {
-			return domain.Frame{}, err
+			return domain.Frame{}, fmt.Errorf("store edited frame object: %w", err)
 		}
 		imageURL = object.URL
 	}
