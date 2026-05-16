@@ -4,35 +4,35 @@ import (
 	"encoding/base64"
 	"fmt"
 	"math"
-	"sync"
 	"time"
 
 	"github.com/haseg/anifusion-canvas/apps/api/internal/domain"
 )
 
+type StudioStore interface {
+	ListFrames(projectID string) ([]domain.Frame, error)
+	ReplaceFrames(projectID string, frames []domain.Frame) error
+	FindFrame(projectID string, frameID string) (domain.Frame, bool, error)
+	UpsertFrame(frame domain.Frame) error
+	CreateJob(job domain.Job) error
+	UpdateJob(job domain.Job) error
+	GetJob(jobID string) (domain.Job, bool, error)
+}
+
 type StudioService struct {
-	mu     sync.RWMutex
-	frames map[string][]domain.Frame
-	jobs   map[string]domain.Job
+	store StudioStore
 }
 
 func NewStudioService() *StudioService {
-	return &StudioService{
-		frames: make(map[string][]domain.Frame),
-		jobs:   make(map[string]domain.Job),
-	}
+	return NewStudioServiceWithStore(NewMemoryStudioStore())
 }
 
-func (s *StudioService) ListFrames(projectID string) []domain.Frame {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
+func NewStudioServiceWithStore(store StudioStore) *StudioService {
+	return &StudioService{store: store}
+}
 
-	frames := s.frames[projectID]
-	if frames == nil {
-		return []domain.Frame{}
-	}
-
-	return append([]domain.Frame(nil), frames...)
+func (s *StudioService) ListFrames(projectID string) ([]domain.Frame, error) {
+	return s.store.ListFrames(projectID)
 }
 
 func (s *StudioService) GenerateFrames(input domain.GenerateFramesRequest) domain.Job {
@@ -43,7 +43,11 @@ func (s *StudioService) GenerateFrames(input domain.GenerateFramesRequest) domai
 		input.FrameCount = 12
 	}
 
-	job := s.createJob("generation", "中割り生成を受け付けました")
+	job := s.createJob(input.ProjectID, "generation", "中割り生成を受け付けました")
+	if job.Status == domain.JobStatusFailed {
+		return job
+	}
+
 	go s.runJob(job.ID, func(update func(int, string)) (any, error) {
 		update(18, "ToonCrafter入力を準備しています")
 		time.Sleep(350 * time.Millisecond)
@@ -61,9 +65,9 @@ func (s *StudioService) GenerateFrames(input domain.GenerateFramesRequest) domai
 		}
 		frames = append(frames, s.newFrame(input.ProjectID, input.FrameCount+1, domain.FrameKindKey, input.EndImageDataURL, "end keyframe"))
 
-		s.mu.Lock()
-		s.frames[input.ProjectID] = frames
-		s.mu.Unlock()
+		if err := s.store.ReplaceFrames(input.ProjectID, frames); err != nil {
+			return nil, err
+		}
 
 		return domain.GenerateFramesResult{Frames: frames}, nil
 	})
@@ -72,14 +76,21 @@ func (s *StudioService) GenerateFrames(input domain.GenerateFramesRequest) domai
 }
 
 func (s *StudioService) InpaintFrame(input domain.InpaintFrameRequest) domain.Job {
-	job := s.createJob("inpainting", "Inpaintingを受け付けました")
+	job := s.createJob(input.ProjectID, "inpainting", "Inpaintingを受け付けました")
+	if job.Status == domain.JobStatusFailed {
+		return job
+	}
+
 	go s.runJob(job.ID, func(update func(int, string)) (any, error) {
 		update(28, "マスク領域を解析しています")
 		time.Sleep(300 * time.Millisecond)
 		update(72, "プロンプトに沿って部分修正しています")
 		time.Sleep(500 * time.Millisecond)
 
-		frame, ok := s.findFrame(input.ProjectID, input.FrameID)
+		frame, ok, err := s.store.FindFrame(input.ProjectID, input.FrameID)
+		if err != nil {
+			return nil, err
+		}
 		if !ok {
 			return nil, fmt.Errorf("frame not found")
 		}
@@ -88,7 +99,9 @@ func (s *StudioService) InpaintFrame(input domain.InpaintFrameRequest) domain.Jo
 		frame.ImageURL = demoImage("INPAINT", 146)
 		frame.ThumbnailURL = frame.ImageURL
 		frame.UpdatedAt = now()
-		s.replaceFrame(frame)
+		if err := s.store.UpsertFrame(frame); err != nil {
+			return nil, err
+		}
 
 		return domain.InpaintFrameResult{Frame: frame}, nil
 	})
@@ -97,7 +110,10 @@ func (s *StudioService) InpaintFrame(input domain.InpaintFrameRequest) domain.Jo
 }
 
 func (s *StudioService) UpdateFrame(input domain.UpdateFrameRequest) (domain.Frame, error) {
-	frame, ok := s.findFrame(input.ProjectID, input.FrameID)
+	frame, ok, err := s.store.FindFrame(input.ProjectID, input.FrameID)
+	if err != nil {
+		return domain.Frame{}, err
+	}
 	if !ok {
 		return domain.Frame{}, fmt.Errorf("frame not found")
 	}
@@ -107,13 +123,19 @@ func (s *StudioService) UpdateFrame(input domain.UpdateFrameRequest) (domain.Fra
 	frame.ThumbnailURL = input.ImageDataURL
 	frame.Note = input.Note
 	frame.UpdatedAt = now()
-	s.replaceFrame(frame)
+	if err := s.store.UpsertFrame(frame); err != nil {
+		return domain.Frame{}, err
+	}
 
 	return frame, nil
 }
 
 func (s *StudioService) ExportVideo(input domain.ExportVideoRequest) domain.Job {
-	job := s.createJob("export", "動画書き出しを受け付けました")
+	job := s.createJob(input.ProjectID, "export", "動画書き出しを受け付けました")
+	if job.Status == domain.JobStatusFailed {
+		return job
+	}
+
 	go s.runJob(job.ID, func(update func(int, string)) (any, error) {
 		update(24, "フレーム列を確認しています")
 		time.Sleep(250 * time.Millisecond)
@@ -128,18 +150,15 @@ func (s *StudioService) ExportVideo(input domain.ExportVideoRequest) domain.Job 
 	return job
 }
 
-func (s *StudioService) GetJob(jobID string) (domain.Job, bool) {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-
-	job, ok := s.jobs[jobID]
-	return job, ok
+func (s *StudioService) GetJob(jobID string) (domain.Job, bool, error) {
+	return s.store.GetJob(jobID)
 }
 
-func (s *StudioService) createJob(jobType string, message string) domain.Job {
+func (s *StudioService) createJob(projectID string, jobType string, message string) domain.Job {
 	timestamp := now()
 	job := domain.Job{
 		ID:        fmt.Sprintf("job-%d", time.Now().UnixNano()),
+		ProjectID: projectID,
 		Type:      jobType,
 		Status:    domain.JobStatusQueued,
 		Progress:  0,
@@ -148,30 +167,33 @@ func (s *StudioService) createJob(jobType string, message string) domain.Job {
 		UpdatedAt: timestamp,
 	}
 
-	s.mu.Lock()
-	s.jobs[job.ID] = job
-	s.mu.Unlock()
+	if err := s.store.CreateJob(job); err != nil {
+		job.Status = domain.JobStatusFailed
+		job.Error = err.Error()
+		job.Message = "ジョブ作成に失敗しました"
+	}
 
 	return job
 }
 
 func (s *StudioService) runJob(jobID string, run func(update func(int, string)) (any, error)) {
 	update := func(progress int, message string) {
-		s.mu.Lock()
-		job := s.jobs[jobID]
+		job, ok, err := s.store.GetJob(jobID)
+		if err != nil || !ok {
+			return
+		}
 		job.Status = domain.JobStatusRunning
 		job.Progress = progress
 		job.Message = message
 		job.UpdatedAt = now()
-		s.jobs[jobID] = job
-		s.mu.Unlock()
+		_ = s.store.UpdateJob(job)
 	}
 
 	result, err := run(update)
-
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	job := s.jobs[jobID]
+	job, ok, getErr := s.store.GetJob(jobID)
+	if getErr != nil || !ok {
+		return
+	}
 	if err != nil {
 		job.Status = domain.JobStatusFailed
 		job.Error = err.Error()
@@ -183,7 +205,7 @@ func (s *StudioService) runJob(jobID string, run func(update func(int, string)) 
 		job.Result = result
 	}
 	job.UpdatedAt = now()
-	s.jobs[jobID] = job
+	_ = s.store.UpdateJob(job)
 }
 
 func (s *StudioService) newFrame(projectID string, index int, kind domain.FrameKind, imageURL string, note string) domain.Frame {
@@ -201,33 +223,6 @@ func (s *StudioService) newFrame(projectID string, index int, kind domain.FrameK
 		Note:         note,
 		UpdatedAt:    now(),
 	}
-}
-
-func (s *StudioService) findFrame(projectID string, frameID string) (domain.Frame, bool) {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-
-	for _, frame := range s.frames[projectID] {
-		if frame.ID == frameID {
-			return frame, true
-		}
-	}
-
-	return domain.Frame{}, false
-}
-
-func (s *StudioService) replaceFrame(next domain.Frame) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	frames := s.frames[next.ProjectID]
-	for index, frame := range frames {
-		if frame.ID == next.ID {
-			frames[index] = next
-			break
-		}
-	}
-	s.frames[next.ProjectID] = frames
 }
 
 func now() string {

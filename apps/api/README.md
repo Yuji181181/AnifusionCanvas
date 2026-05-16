@@ -35,6 +35,14 @@ migrate -path internal/infrastructure/db/migrations -database "$DATABASE_URL" up
 
 SQL query は `internal/infrastructure/db/query` に置き、sqlc 生成対象にする。
 
+DB-backed store を有効化する場合は次を設定する。
+
+```bash
+STUDIO_STORE=database
+```
+
+既存DBのスキーマが合わない場合は `docs/database-setup.md` を参照する。
+
 ## Required Environment Variables
 
 - `DATABASE_URL`

@@ -72,8 +72,64 @@ func (c *Checker) CheckDatabase(ctx context.Context) CheckResult {
 	if err := db.PingContext(pingCtx); err != nil {
 		return failed("database", err)
 	}
+	if c.cfg.StudioStore == "database" {
+		if err := checkDatabaseSchema(pingCtx, db); err != nil {
+			return failed("database", err)
+		}
+	}
 
 	return ok("database", "TiDB/MySQL connection is reachable")
+}
+
+func checkDatabaseSchema(ctx context.Context, db *sql.DB) error {
+	required := map[string][]string{
+		"projects": {"id", "name", "created_at", "updated_at"},
+		"frames": {
+			"id",
+			"project_id",
+			"frame_index",
+			"image_url",
+			"thumbnail_url",
+			"kind",
+			"note",
+			"created_at",
+			"updated_at",
+		},
+		"jobs": {
+			"id",
+			"project_id",
+			"job_type",
+			"status",
+			"progress",
+			"message",
+			"result_json",
+			"error",
+			"created_at",
+			"updated_at",
+		},
+	}
+
+	var databaseName string
+	if err := db.QueryRowContext(ctx, `SELECT DATABASE()`).Scan(&databaseName); err != nil {
+		return err
+	}
+	for table, columns := range required {
+		for _, column := range columns {
+			var count int
+			err := db.QueryRowContext(ctx, `
+SELECT COUNT(*)
+FROM information_schema.columns
+WHERE table_schema = ? AND table_name = ? AND column_name = ?`, databaseName, table, column).Scan(&count)
+			if err != nil {
+				return err
+			}
+			if count == 0 {
+				return fmt.Errorf("database schema mismatch: missing %s.%s; run migrations before STUDIO_STORE=database", table, column)
+			}
+		}
+	}
+
+	return nil
 }
 
 func (c *Checker) CheckReplicate(ctx context.Context) CheckResult {

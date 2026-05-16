@@ -31,6 +31,7 @@ type Frame struct {
 
 type Job struct {
 	ID        string    `json:"id"`
+	ProjectID string    `json:"projectId,omitempty"`
 	Type      string    `json:"type"`
 	Status    JobStatus `json:"status"`
 	Progress  int       `json:"progress"`
