@@ -423,3 +423,14 @@ progress {
   gap: 4px;
   margin-top: 4px;
 }
+
+.toolbar-label {
+  align-items: center;
+  display: flex;
+  font-size: 13px;
+  gap: 4px;
+}
+
+.toolbar-label input[type="range"] {
+  width: 90px;
+}
