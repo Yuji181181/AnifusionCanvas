@@ -67,7 +67,7 @@ func (s *StudioService) GenerateFrames(input domain.GenerateFramesRequest) domai
 		input.FrameCount = 12
 	}
 
-	job := s.createJob(input.ProjectID, "generation", "中割り生成を受け付けました")
+	job := s.createJob(input.ProjectID, domain.JobTypeGeneration, "中割り生成を受け付けました")
 	if job.Status == domain.JobStatusFailed {
 		return job
 	}
@@ -100,7 +100,7 @@ func (s *StudioService) GenerateFrames(input domain.GenerateFramesRequest) domai
 }
 
 func (s *StudioService) InpaintFrame(input domain.InpaintFrameRequest) domain.Job {
-	job := s.createJob(input.ProjectID, "inpainting", "Inpaintingを受け付けました")
+	job := s.createJob(input.ProjectID, domain.JobTypeInpainting, "Inpaintingを受け付けました")
 	if job.Status == domain.JobStatusFailed {
 		return job
 	}
@@ -167,7 +167,7 @@ func (s *StudioService) ReorderFrames(input domain.ReorderFramesRequest) ([]doma
 }
 
 func (s *StudioService) ExportVideo(input domain.ExportVideoRequest) domain.Job {
-	job := s.createJob(input.ProjectID, "export", "動画書き出しを受け付けました")
+	job := s.createJob(input.ProjectID, domain.JobTypeExport, "動画書き出しを受け付けました")
 	if job.Status == domain.JobStatusFailed {
 		return job
 	}
@@ -190,7 +190,7 @@ func (s *StudioService) GetJob(jobID string) (domain.Job, bool, error) {
 	return s.store.GetJob(jobID)
 }
 
-func (s *StudioService) createJob(projectID string, jobType string, message string) domain.Job {
+func (s *StudioService) createJob(projectID string, jobType domain.JobType, message string) domain.Job {
 	if projectID != "" {
 		_, ok, err := s.store.GetProject(projectID)
 		if err != nil {

@@ -9,6 +9,14 @@ const (
 	JobStatusFailed    JobStatus = "failed"
 )
 
+type JobType string
+
+const (
+	JobTypeGeneration JobType = "generation"
+	JobTypeInpainting JobType = "inpainting"
+	JobTypeExport     JobType = "export"
+)
+
 type FrameKind string
 
 const (
@@ -39,7 +47,7 @@ type Project struct {
 type Job struct {
 	ID        string    `json:"id"`
 	ProjectID string    `json:"projectId,omitempty"`
-	Type      string    `json:"type"`
+	Type      JobType   `json:"type"`
 	Status    JobStatus `json:"status"`
 	Progress  int       `json:"progress"`
 	Message   string    `json:"message"`

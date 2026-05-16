@@ -345,7 +345,7 @@ INSERT INTO studio_jobs (
 ) VALUES (?, ?, ?, ?, ?, ?)`,
 		job.ID,
 		nullString(job.ProjectID),
-		job.Type,
+		string(job.Type),
 		string(job.Status),
 		job.Progress,
 		job.Message,
@@ -384,6 +384,7 @@ WHERE id = ?`,
 func (s *StudioStore) GetJob(jobID string) (domain.Job, bool, error) {
 	var job domain.Job
 	var projectID sql.NullString
+	var jobType string
 	var status string
 	var resultJSON []byte
 	var errorMessage sql.NullString
@@ -403,7 +404,7 @@ FROM studio_jobs
 WHERE id = ?`, jobID).Scan(
 		&job.ID,
 		&projectID,
-		&job.Type,
+		&jobType,
 		&status,
 		&job.Progress,
 		&job.Message,
@@ -420,17 +421,47 @@ WHERE id = ?`, jobID).Scan(
 	}
 
 	job.ProjectID = projectID.String
+	job.Type = domain.JobType(jobType)
 	job.Status = domain.JobStatus(status)
 	job.Error = errorMessage.String
 	if len(resultJSON) > 0 {
-		var result any
-		if err := json.Unmarshal(resultJSON, &result); err != nil {
+		result, err := decodeJobResult(job.Type, resultJSON)
+		if err != nil {
 			return domain.Job{}, false, fmt.Errorf("decode job result: %w", err)
 		}
 		job.Result = result
 	}
 
 	return job, true, nil
+}
+
+func decodeJobResult(jobType domain.JobType, payload []byte) (any, error) {
+	switch jobType {
+	case domain.JobTypeGeneration:
+		var result domain.GenerateFramesResult
+		if err := json.Unmarshal(payload, &result); err != nil {
+			return nil, err
+		}
+		return result, nil
+	case domain.JobTypeInpainting:
+		var result domain.InpaintFrameResult
+		if err := json.Unmarshal(payload, &result); err != nil {
+			return nil, err
+		}
+		return result, nil
+	case domain.JobTypeExport:
+		var result domain.ExportVideoResult
+		if err := json.Unmarshal(payload, &result); err != nil {
+			return nil, err
+		}
+		return result, nil
+	default:
+		var result map[string]any
+		if err := json.Unmarshal(payload, &result); err != nil {
+			return nil, err
+		}
+		return result, nil
+	}
 }
 
 func upsertProjectTx(tx *sql.Tx, projectID string) error {

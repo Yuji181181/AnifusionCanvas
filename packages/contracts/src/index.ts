@@ -1,5 +1,7 @@
 export type JobStatus = 'queued' | 'running' | 'succeeded' | 'failed'
 
+export type JobType = 'generation' | 'inpainting' | 'export'
+
 export type FrameKind = 'key' | 'generated' | 'inpainted' | 'edited'
 
 export type Frame = {
@@ -23,7 +25,7 @@ export type Project = {
 export type Job<T = unknown> = {
   id: string
   projectId?: string
-  type: 'generation' | 'inpainting' | 'export'
+  type: JobType
   status: JobStatus
   progress: number
   message: string
@@ -64,6 +66,10 @@ export type GenerateFramesResponse = {
   job: Job<GenerateFramesResult>
 }
 
+export type GenerateFramesJob = Job<GenerateFramesResult> & {
+  type: 'generation'
+}
+
 export type InpaintFrameRequest = {
   projectId: string
   frameId: string
@@ -78,6 +84,10 @@ export type InpaintFrameResult = {
 
 export type InpaintFrameResponse = {
   job: Job<InpaintFrameResult>
+}
+
+export type InpaintFrameJob = Job<InpaintFrameResult> & {
+  type: 'inpainting'
 }
 
 export type UpdateFrameRequest = {
@@ -118,6 +128,22 @@ export type ExportVideoResult = {
 
 export type ExportVideoResponse = {
   job: Job<ExportVideoResult>
+}
+
+export type ExportVideoJob = Job<ExportVideoResult> & {
+  type: 'export'
+}
+
+export type JobResultByType = {
+  generation: GenerateFramesResult
+  inpainting: InpaintFrameResult
+  export: ExportVideoResult
+}
+
+export type StudioJob = GenerateFramesJob | InpaintFrameJob | ExportVideoJob
+
+export type GetStudioJobResponse = {
+  job: StudioJob
 }
 
 export type ListFramesResponse = {
