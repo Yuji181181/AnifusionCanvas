@@ -21,6 +21,7 @@ type Config struct {
 	R2Region          string
 	ReplicateAPIToken string
 	FrontendOrigin    string
+	StudioStore       string
 }
 
 func Load() (Config, error) {
@@ -39,10 +40,14 @@ func Load() (Config, error) {
 		R2Region:          getEnv("R2_REGION", "auto"),
 		ReplicateAPIToken: os.Getenv("REPLICATE_API_TOKEN"),
 		FrontendOrigin:    getEnv("FRONTEND_ORIGIN", "http://localhost:3000"),
+		StudioStore:       getEnv("STUDIO_STORE", "memory"),
 	}
 
 	if cfg.AppEnv == "production" && cfg.DatabaseURL == "" {
 		return Config{}, fmt.Errorf("DATABASE_URL is required")
+	}
+	if cfg.StudioStore == "database" && cfg.DatabaseURL == "" {
+		return Config{}, fmt.Errorf("DATABASE_URL is required when STUDIO_STORE=database")
 	}
 
 	return cfg, nil

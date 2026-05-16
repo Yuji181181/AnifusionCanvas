@@ -18,7 +18,12 @@ func NewStudioHandler(service *usecase.StudioService) *StudioHandler {
 
 func (h *StudioHandler) ListFrames(c echo.Context) error {
 	projectID := c.Param("projectId")
-	return c.JSON(http.StatusOK, map[string]any{"frames": h.service.ListFrames(projectID)})
+	frames, err := h.service.ListFrames(projectID)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
+	}
+
+	return c.JSON(http.StatusOK, map[string]any{"frames": frames})
 }
 
 func (h *StudioHandler) GenerateFrames(c echo.Context) error {
@@ -65,7 +70,10 @@ func (h *StudioHandler) ExportVideo(c echo.Context) error {
 }
 
 func (h *StudioHandler) GetJob(c echo.Context) error {
-	job, ok := h.service.GetJob(c.Param("jobId"))
+	job, ok, err := h.service.GetJob(c.Param("jobId"))
+	if err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
+	}
 	if !ok {
 		return echo.NewHTTPError(http.StatusNotFound, "job not found")
 	}

@@ -15,6 +15,7 @@ export type Frame = {
 
 export type Job<T = unknown> = {
   id: string
+  projectId?: string
   type: 'generation' | 'inpainting' | 'export'
   status: JobStatus
   progress: number

@@ -23,7 +23,10 @@ func TestGenerateFramesCreatesTimeline(t *testing.T) {
 		t.Fatalf("expected succeeded job, got %s", job.Status)
 	}
 
-	frames := service.ListFrames("project-1")
+	frames, err := service.ListFrames("project-1")
+	if err != nil {
+		t.Fatalf("list frames failed: %v", err)
+	}
 	if len(frames) != 5 {
 		t.Fatalf("expected 5 frames including keyframes, got %d", len(frames))
 	}
@@ -39,7 +42,11 @@ func TestUpdateFrameMarksFrameEdited(t *testing.T) {
 		FrameCount: 2,
 	})
 	waitForJob(t, service, job.ID)
-	frame := service.ListFrames("project-1")[1]
+	frames, err := service.ListFrames("project-1")
+	if err != nil {
+		t.Fatalf("list frames failed: %v", err)
+	}
+	frame := frames[1]
 
 	updated, err := service.UpdateFrame(domain.UpdateFrameRequest{
 		ProjectID:    "project-1",
@@ -60,7 +67,10 @@ func waitForJob(t *testing.T, service *StudioService, jobID string) domain.Job {
 
 	deadline := time.Now().Add(3 * time.Second)
 	for time.Now().Before(deadline) {
-		job, ok := service.GetJob(jobID)
+		job, ok, err := service.GetJob(jobID)
+		if err != nil {
+			t.Fatalf("get job failed: %v", err)
+		}
 		if !ok {
 			t.Fatalf("job not found: %s", jobID)
 		}

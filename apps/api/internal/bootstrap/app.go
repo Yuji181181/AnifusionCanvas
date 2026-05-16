@@ -6,6 +6,7 @@ import (
 	"github.com/haseg/anifusion-canvas/apps/api/internal/config"
 	"github.com/haseg/anifusion-canvas/apps/api/internal/http/handler"
 	"github.com/haseg/anifusion-canvas/apps/api/internal/http/router"
+	dbinfra "github.com/haseg/anifusion-canvas/apps/api/internal/infrastructure/db"
 	"github.com/haseg/anifusion-canvas/apps/api/internal/infrastructure/dependency"
 	"github.com/haseg/anifusion-canvas/apps/api/internal/usecase"
 	"github.com/labstack/echo/v4"
@@ -31,7 +32,15 @@ func NewApp() (*App, error) {
 		AllowMethods: []string{http.MethodGet, http.MethodPost, http.MethodPut, http.MethodDelete, http.MethodOptions},
 	}))
 
-	studioService := usecase.NewStudioService()
+	studioStore := usecase.StudioStore(usecase.NewMemoryStudioStore())
+	if cfg.StudioStore == "database" {
+		store, err := dbinfra.NewStudioStore(cfg.DatabaseURL)
+		if err != nil {
+			return nil, err
+		}
+		studioStore = store
+	}
+	studioService := usecase.NewStudioServiceWithStore(studioStore)
 	studioHandler := handler.NewStudioHandler(studioService)
 	healthHandler := handler.NewHealthHandler(dependency.NewChecker(cfg))
 	router.Register(e, studioHandler, healthHandler)
