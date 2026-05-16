@@ -2,7 +2,9 @@ package router
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -156,6 +158,42 @@ func TestStudioUpdateRouteReturnsNotFoundForMissingFrame(t *testing.T) {
 		t.Fatalf("expected delete status %d, got %d: %s", http.StatusNotFound, deleteRes.Code, deleteRes.Body.String())
 	}
 	assertErrorResponse(t, deleteRes, "Not Found", "frame not found")
+}
+
+func TestStudioUpdateRouteReturnsServerErrorForStorageFailure(t *testing.T) {
+	service := usecase.NewStudioServiceWithStoreAndObjects(usecase.NewMemoryStudioStore(), failingObjectStore{})
+	e := newTestEchoWithService(service)
+	projectID := "storage-failure-project"
+
+	generateRes := performJSON(t, e, http.MethodPost, "/inference/generate", map[string]any{
+		"projectId":         projectID,
+		"prompt":            "clean character turn",
+		"frameCount":        2,
+		"startImageDataUrl": "data:image/png;base64,start",
+		"endImageDataUrl":   "data:image/png;base64,end",
+	})
+	if generateRes.Code != http.StatusAccepted {
+		t.Fatalf("expected generate status %d, got %d: %s", http.StatusAccepted, generateRes.Code, generateRes.Body.String())
+	}
+	var generatePayload struct {
+		Job domain.Job `json:"job"`
+	}
+	decodeJSON(t, generateRes, &generatePayload)
+	waitForHTTPJob(t, e, generatePayload.Job.ID)
+
+	framesRes := performJSON(t, e, http.MethodGet, "/projects/"+projectID+"/frames", nil)
+	var framesPayload struct {
+		Frames []domain.Frame `json:"frames"`
+	}
+	decodeJSON(t, framesRes, &framesPayload)
+
+	res := performJSON(t, e, http.MethodPut, "/projects/"+projectID+"/frames/"+framesPayload.Frames[1].ID, map[string]any{
+		"imageDataUrl": "data:image/png;base64,edited",
+	})
+	if res.Code != http.StatusInternalServerError {
+		t.Fatalf("expected status %d, got %d: %s", http.StatusInternalServerError, res.Code, res.Body.String())
+	}
+	assertErrorResponse(t, res, "Internal Server Error", "store edited frame object: upload failed")
 }
 
 func TestStudioProjectRoutesReturnNotFound(t *testing.T) {
@@ -342,13 +380,22 @@ func TestStudioRoutesRejectInvalidRequests(t *testing.T) {
 }
 
 func newTestEcho() *echo.Echo {
+	return newTestEchoWithService(usecase.NewStudioService())
+}
+
+func newTestEchoWithService(service *usecase.StudioService) *echo.Echo {
 	e := echo.New()
 	e.HTTPErrorHandler = handler.JSONErrorHandler
-	service := usecase.NewStudioService()
 	studioHandler := handler.NewStudioHandler(service)
 	healthHandler := handler.NewHealthHandler(dependency.NewChecker(config.Config{}))
 	Register(e, studioHandler, healthHandler)
 	return e
+}
+
+type failingObjectStore struct{}
+
+func (failingObjectStore) PutDataURL(context.Context, string, string) (domain.StorageObject, error) {
+	return domain.StorageObject{}, fmt.Errorf("upload failed")
 }
 
 func performJSON(t *testing.T, e *echo.Echo, method string, path string, body any) *httptest.ResponseRecorder {
