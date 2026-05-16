@@ -32,7 +32,7 @@ type StudioStore interface {
 	DeleteFrame(projectID string, frameID string) (bool, error)
 	ReorderFrames(projectID string, frameIDs []string) ([]domain.Frame, error)
 	CreateJob(job domain.Job) error
-	UpdateJob(job domain.Job) error
+	UpdateJob(job domain.Job) (bool, error)
 	GetJob(jobID string) (domain.Job, bool, error)
 }
 
@@ -675,6 +675,7 @@ func (s *StudioService) createJob(projectID string, jobType domain.JobType, mess
 		Status:    domain.JobStatusQueued,
 		Progress:  0,
 		Message:   message,
+		Version:   1,
 		CreatedAt: timestamp,
 		UpdatedAt: timestamp,
 	}
@@ -694,11 +695,14 @@ func (s *StudioService) runJob(jobID string, run func(update func(int, string)) 
 		if err != nil || !ok {
 			return
 		}
+		if !job.CanTransitionTo(domain.JobStatusRunning) {
+			return
+		}
 		job.Status = domain.JobStatusRunning
 		job.Progress = progress
 		job.Message = message
 		job.UpdatedAt = now()
-		_ = s.store.UpdateJob(job)
+		_, _ = s.store.UpdateJob(job)
 	}
 
 	result, err := run(update)
@@ -707,17 +711,23 @@ func (s *StudioService) runJob(jobID string, run func(update func(int, string)) 
 		return
 	}
 	if err != nil {
+		if !job.CanTransitionTo(domain.JobStatusFailed) {
+			return
+		}
 		job.Status = domain.JobStatusFailed
 		job.Error = err.Error()
 		job.Message = "ジョブに失敗しました"
 	} else {
+		if !job.CanTransitionTo(domain.JobStatusSucceeded) {
+			return
+		}
 		job.Status = domain.JobStatusSucceeded
 		job.Progress = 100
 		job.Message = "完了しました"
 		job.Result = result
 	}
 	job.UpdatedAt = now()
-	_ = s.store.UpdateJob(job)
+	_, _ = s.store.UpdateJob(job)
 }
 
 func (s *StudioService) newFrame(projectID string, index int, kind domain.FrameKind, imageURL string, note string) domain.Frame {

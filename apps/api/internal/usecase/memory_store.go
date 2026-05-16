@@ -201,12 +201,20 @@ func (s *MemoryStudioStore) CreateJob(job domain.Job) error {
 	return nil
 }
 
-func (s *MemoryStudioStore) UpdateJob(job domain.Job) error {
+func (s *MemoryStudioStore) UpdateJob(job domain.Job) (bool, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
+	existing, ok := s.jobs[job.ID]
+	if !ok {
+		return false, nil
+	}
+	if existing.Version != job.Version {
+		return false, nil
+	}
+	job.Version++
 	s.jobs[job.ID] = job
-	return nil
+	return true, nil
 }
 
 func (s *MemoryStudioStore) GetJob(jobID string) (domain.Job, bool, error) {

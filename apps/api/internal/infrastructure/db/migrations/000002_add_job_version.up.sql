@@ -1,0 +1,1 @@
+ALTER TABLE studio_jobs ADD COLUMN version INT NOT NULL DEFAULT 1;
