@@ -29,9 +29,13 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
   return response.json() as Promise<T>
 }
 
+function pathParam(value: string): string {
+  return encodeURIComponent(value)
+}
+
 export const apiClient = {
   listFrames(projectId: string) {
-    return request<ListFramesResponse>(`/projects/${projectId}/frames`)
+    return request<ListFramesResponse>(`/projects/${pathParam(projectId)}/frames`)
   },
   generateFrames(input: GenerateFramesRequest) {
     return request<GenerateFramesResponse>('/inference/generate', {
@@ -46,7 +50,7 @@ export const apiClient = {
     })
   },
   updateFrame(input: UpdateFrameRequest) {
-    return request<UpdateFrameResult>(`/projects/${input.projectId}/frames/${input.frameId}`, {
+    return request<UpdateFrameResult>(`/projects/${pathParam(input.projectId)}/frames/${pathParam(input.frameId)}`, {
       method: 'PUT',
       body: JSON.stringify(input),
     })
@@ -58,6 +62,6 @@ export const apiClient = {
     })
   },
   getJob<T>(jobId: string) {
-    return request<GetJobResponse<T>>(`/jobs/${jobId}`)
+    return request<GetJobResponse<T>>(`/jobs/${pathParam(jobId)}`)
   },
 }
