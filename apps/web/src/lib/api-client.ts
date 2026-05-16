@@ -1,5 +1,6 @@
 import type {
   ApiErrorResponse,
+  CreateProjectRequest,
   ExportVideoRequest,
   ExportVideoResponse,
   GenerateFramesRequest,
@@ -10,8 +11,10 @@ import type {
   InpaintFrameRequest,
   InpaintFrameResponse,
   ListFramesResponse,
+  ProjectResponse,
   UpdateFrameRequest,
   UpdateFrameResult,
+  UpdateProjectRequest,
 } from '@anifusion/contracts'
 import { env } from './env'
 
@@ -59,6 +62,21 @@ export const apiClient = {
   },
   healthDependencies() {
     return request<HealthDependenciesResponse>('/health/dependencies')
+  },
+  createProject(input: CreateProjectRequest) {
+    return request<ProjectResponse>('/projects', {
+      method: 'POST',
+      body: JSON.stringify(input),
+    })
+  },
+  getProject(projectId: string) {
+    return request<ProjectResponse>(`/projects/${pathParam(projectId)}`)
+  },
+  updateProject(input: UpdateProjectRequest) {
+    return request<ProjectResponse>(`/projects/${pathParam(input.id)}`, {
+      method: 'PUT',
+      body: JSON.stringify(input),
+    })
   },
   listFrames(projectId: string) {
     return request<ListFramesResponse>(`/projects/${pathParam(projectId)}/frames`)

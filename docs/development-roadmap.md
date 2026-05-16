@@ -115,7 +115,7 @@
 
 ### Phase 1: API 契約とデータモデルの完成
 
-- [ ] Project の作成、取得、更新 API を追加する
+- [x] Project の作成、取得、更新 API を追加する
 - [ ] Frame の削除、並び替え、kind / note 更新 API を追加する
 - [ ] Job の type 別 result schema を Go / TypeScript 双方で厳密化する
 - [ ] `packages/contracts` に `/health/dependencies`、Project、storage object、export artifact の型を追加する

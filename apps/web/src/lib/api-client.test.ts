@@ -37,6 +37,50 @@ describe('apiClient', () => {
     )
   })
 
+  it('sends project creation requests as JSON', async () => {
+    const fetchMock = mockFetch({
+      project: {
+        id: 'project-1',
+        name: 'Demo project',
+        createdAt: '2026-05-17T00:00:00Z',
+        updatedAt: '2026-05-17T00:00:00Z',
+      },
+    })
+
+    await apiClient.createProject({ id: 'project-1', name: 'Demo project' })
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      'http://localhost:8080/projects',
+      expect.objectContaining({
+        body: JSON.stringify({ id: 'project-1', name: 'Demo project' }),
+        headers: expect.objectContaining({ 'content-type': 'application/json' }),
+        method: 'POST',
+      }),
+    )
+  })
+
+  it('encodes project path parameters when updating a project', async () => {
+    const fetchMock = mockFetch({
+      project: {
+        id: 'project with space',
+        name: 'Renamed project',
+        createdAt: '2026-05-17T00:00:00Z',
+        updatedAt: '2026-05-17T00:00:01Z',
+      },
+    })
+
+    await apiClient.updateProject({ id: 'project with space', name: 'Renamed project' })
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      'http://localhost:8080/projects/project%20with%20space',
+      expect.objectContaining({
+        body: JSON.stringify({ id: 'project with space', name: 'Renamed project' }),
+        headers: expect.objectContaining({ 'content-type': 'application/json' }),
+        method: 'PUT',
+      }),
+    )
+  })
+
   it('encodes project and frame path parameters when updating a frame', async () => {
     const fetchMock = mockFetch({
       frame: {

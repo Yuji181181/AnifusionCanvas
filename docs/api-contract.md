@@ -17,12 +17,22 @@ GoのJSON tagとTypeScript contractのプロパティ名を一致させる。片
 
 | Concept | Go | TypeScript |
 | --- | --- | --- |
+| Project | `domain.Project` | `Project` |
 | Frame | `domain.Frame` | `Frame` |
 | Frame kind | `domain.FrameKind` | `FrameKind` |
 | Job | `domain.Job` | `Job<T>` |
 | Job status | `domain.JobStatus` | `JobStatus` |
 | Dependency check result | `dependency.CheckResult` | `DependencyCheckResult` |
 | API error | `handler.ErrorBody` | `ApiErrorResponse` |
+
+### Project
+
+| JSON field | Type | Notes |
+| --- | --- | --- |
+| `id` | string | Project ID |
+| `name` | string | User-facing project name |
+| `createdAt` | string | RFC3339 timestamp |
+| `updatedAt` | string | RFC3339 timestamp |
 
 ### Frame
 
@@ -108,6 +118,83 @@ Behavior:
 - `status` is `degraded` when at least one dependency check has `status: 'error'`.
 - Missing optional local-development configuration returns a dependency result with `status: 'skipped'`.
 - Production readiness expects `database`, `replicate`, `r2`, and `ffmpeg` to all return `status: 'ok'`.
+
+### `POST /projects`
+
+Request:
+
+```ts
+type CreateProjectRequest = {
+  id: string
+  name: string
+}
+```
+
+Response:
+
+```ts
+type ProjectResponse = {
+  project: Project
+}
+```
+
+Validation:
+
+- `id` is required.
+- `name` is required.
+
+Behavior:
+
+- Creates the project when it does not exist.
+- Updates the project name when the same `id` already exists.
+
+### `GET /projects/:projectId`
+
+Response:
+
+```ts
+type ProjectResponse = {
+  project: Project
+}
+```
+
+Validation:
+
+- `projectId` is required.
+
+Errors:
+
+- Returns `404` when the project does not exist.
+
+### `PUT /projects/:projectId`
+
+Request:
+
+```ts
+type UpdateProjectRequest = {
+  id: string
+  name: string
+}
+```
+
+`id` is overwritten from the `:projectId` path parameter by the API layer.
+
+Response:
+
+```ts
+type ProjectResponse = {
+  project: Project
+}
+```
+
+Validation:
+
+- `projectId` is required.
+- `name` is required.
+
+Errors:
+
+- Returns `404` when the project does not exist.
 
 ### `GET /projects/:projectId/frames`
 

@@ -29,6 +29,13 @@ type Frame struct {
 	UpdatedAt    string    `json:"updatedAt"`
 }
 
+type Project struct {
+	ID        string `json:"id"`
+	Name      string `json:"name"`
+	CreatedAt string `json:"createdAt"`
+	UpdatedAt string `json:"updatedAt"`
+}
+
 type Job struct {
 	ID        string    `json:"id"`
 	ProjectID string    `json:"projectId,omitempty"`
@@ -40,6 +47,20 @@ type Job struct {
 	Error     string    `json:"error,omitempty"`
 	CreatedAt string    `json:"createdAt"`
 	UpdatedAt string    `json:"updatedAt"`
+}
+
+type CreateProjectRequest struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
+}
+
+type ProjectResponse struct {
+	Project Project `json:"project"`
+}
+
+type UpdateProjectRequest struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
 }
 
 type GenerateFramesRequest struct {

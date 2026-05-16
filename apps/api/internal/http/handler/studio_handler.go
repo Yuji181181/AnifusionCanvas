@@ -17,6 +17,67 @@ func NewStudioHandler(service *usecase.StudioService) *StudioHandler {
 	return &StudioHandler{service: service}
 }
 
+func (h *StudioHandler) CreateProject(c echo.Context) error {
+	var input domain.CreateProjectRequest
+	if err := c.Bind(&input); err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+	}
+	if isBlank(input.ID) {
+		return echo.NewHTTPError(http.StatusBadRequest, "id is required")
+	}
+	if isBlank(input.Name) {
+		return echo.NewHTTPError(http.StatusBadRequest, "name is required")
+	}
+
+	project, err := h.service.CreateProject(input)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
+	}
+
+	return c.JSON(http.StatusCreated, domain.ProjectResponse{Project: project})
+}
+
+func (h *StudioHandler) GetProject(c echo.Context) error {
+	projectID := c.Param("projectId")
+	if isBlank(projectID) {
+		return echo.NewHTTPError(http.StatusBadRequest, "projectId is required")
+	}
+
+	project, ok, err := h.service.GetProject(projectID)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
+	}
+	if !ok {
+		return echo.NewHTTPError(http.StatusNotFound, "project not found")
+	}
+
+	return c.JSON(http.StatusOK, domain.ProjectResponse{Project: project})
+}
+
+func (h *StudioHandler) UpdateProject(c echo.Context) error {
+	var input domain.UpdateProjectRequest
+	if err := c.Bind(&input); err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+	}
+	input.ID = c.Param("projectId")
+	if isBlank(input.ID) {
+		return echo.NewHTTPError(http.StatusBadRequest, "projectId is required")
+	}
+	if isBlank(input.Name) {
+		return echo.NewHTTPError(http.StatusBadRequest, "name is required")
+	}
+
+	project, ok, err := h.service.UpdateProject(input)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
+	}
+	if !ok {
+		return echo.NewHTTPError(http.StatusNotFound, "project not found")
+	}
+
+	return c.JSON(http.StatusOK, domain.ProjectResponse{Project: project})
+}
+
 func (h *StudioHandler) ListFrames(c echo.Context) error {
 	projectID := c.Param("projectId")
 	if isBlank(projectID) {

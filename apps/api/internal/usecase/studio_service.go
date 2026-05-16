@@ -10,6 +10,9 @@ import (
 )
 
 type StudioStore interface {
+	UpsertProject(project domain.Project) (domain.Project, error)
+	GetProject(projectID string) (domain.Project, bool, error)
+	UpdateProject(project domain.Project) (domain.Project, bool, error)
 	ListFrames(projectID string) ([]domain.Frame, error)
 	ReplaceFrames(projectID string, frames []domain.Frame) error
 	FindFrame(projectID string, frameID string) (domain.Frame, bool, error)
@@ -29,6 +32,24 @@ func NewStudioService() *StudioService {
 
 func NewStudioServiceWithStore(store StudioStore) *StudioService {
 	return &StudioService{store: store}
+}
+
+func (s *StudioService) CreateProject(input domain.CreateProjectRequest) (domain.Project, error) {
+	return s.store.UpsertProject(domain.Project{
+		ID:   input.ID,
+		Name: input.Name,
+	})
+}
+
+func (s *StudioService) GetProject(projectID string) (domain.Project, bool, error) {
+	return s.store.GetProject(projectID)
+}
+
+func (s *StudioService) UpdateProject(input domain.UpdateProjectRequest) (domain.Project, bool, error) {
+	return s.store.UpdateProject(domain.Project{
+		ID:   input.ID,
+		Name: input.Name,
+	})
 }
 
 func (s *StudioService) ListFrames(projectID string) ([]domain.Frame, error) {
@@ -155,6 +176,40 @@ func (s *StudioService) GetJob(jobID string) (domain.Job, bool, error) {
 }
 
 func (s *StudioService) createJob(projectID string, jobType string, message string) domain.Job {
+	if projectID != "" {
+		_, ok, err := s.store.GetProject(projectID)
+		if err != nil {
+			timestamp := now()
+			return domain.Job{
+				ID:        fmt.Sprintf("job-%d", time.Now().UnixNano()),
+				ProjectID: projectID,
+				Type:      jobType,
+				Status:    domain.JobStatusFailed,
+				Progress:  0,
+				Message:   "プロジェクト作成に失敗しました",
+				Error:     err.Error(),
+				CreatedAt: timestamp,
+				UpdatedAt: timestamp,
+			}
+		}
+		if !ok {
+			if _, err := s.store.UpsertProject(domain.Project{ID: projectID, Name: projectID}); err != nil {
+				timestamp := now()
+				return domain.Job{
+					ID:        fmt.Sprintf("job-%d", time.Now().UnixNano()),
+					ProjectID: projectID,
+					Type:      jobType,
+					Status:    domain.JobStatusFailed,
+					Progress:  0,
+					Message:   "プロジェクト作成に失敗しました",
+					Error:     err.Error(),
+					CreatedAt: timestamp,
+					UpdatedAt: timestamp,
+				}
+			}
+		}
+	}
+
 	timestamp := now()
 	job := domain.Job{
 		ID:        fmt.Sprintf("job-%d", time.Now().UnixNano()),

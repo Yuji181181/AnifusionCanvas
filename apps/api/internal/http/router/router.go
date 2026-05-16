@@ -13,6 +13,9 @@ func Register(e *echo.Echo, studio *handler.StudioHandler, health *handler.Healt
 	})
 	e.GET("/health/dependencies", health.Readiness)
 
+	e.POST("/projects", studio.CreateProject)
+	e.GET("/projects/:projectId", studio.GetProject)
+	e.PUT("/projects/:projectId", studio.UpdateProject)
 	e.GET("/projects/:projectId/frames", studio.ListFrames)
 	e.PUT("/projects/:projectId/frames/:frameId", studio.UpdateFrame)
 	e.POST("/inference/generate", studio.GenerateFrames)
