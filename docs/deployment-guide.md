@@ -195,6 +195,7 @@ GitHub Actions から Secret Manager 経由でデプロイする場合は、`Dep
 - `REPLICATE_API_TOKEN`
 
 `R2_PUBLIC_BASE_URL` は任意項目のため、Secret Manager 版デプロイでは必須 secret として参照しない。
+過去に `R2_PUBLIC_BASE_URL` を Secret として Cloud Run に設定していた場合でも、`deploy-secret-manager.sh` が既存の secret binding を削除してから空文字の環境変数として設定する。
 
 ### デプロイ後に確認すること
 
