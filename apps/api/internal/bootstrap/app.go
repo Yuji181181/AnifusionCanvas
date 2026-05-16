@@ -25,6 +25,7 @@ func NewApp() (*App, error) {
 	}
 
 	e := echo.New()
+	e.HTTPErrorHandler = handler.JSONErrorHandler
 	e.Use(middleware.Logger())
 	e.Use(middleware.Recover())
 	e.Use(middleware.CORSWithConfig(middleware.CORSConfig{
