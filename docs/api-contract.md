@@ -18,6 +18,7 @@ GoのJSON tagとTypeScript contractのプロパティ名を一致させる。片
 | Concept | Go | TypeScript |
 | --- | --- | --- |
 | Project | `domain.Project` | `Project` |
+| Storage object | `storage.StoredObject` | `StorageObject` |
 | Frame | `domain.Frame` | `Frame` |
 | Frame kind | `domain.FrameKind` | `FrameKind` |
 | Job | `domain.Job` | `Job<T>` |
@@ -47,6 +48,15 @@ GoのJSON tagとTypeScript contractのプロパティ名を一致させる。片
 | `kind` | `key` / `generated` / `inpainted` / `edited` | Frame origin |
 | `note` | string, optional | Prompt or edit note |
 | `updatedAt` | string | RFC3339 timestamp |
+
+### Storage Object
+
+| JSON field | Type | Notes |
+| --- | --- | --- |
+| `key` | string | R2 object key |
+| `url` | string | Public URL when `R2_PUBLIC_BASE_URL` is set, otherwise an internal `r2://` URI |
+| `contentType` | string | Object media type |
+| `size` | number | Object size in bytes |
 
 ### Job
 
