@@ -1,6 +1,6 @@
 # AnifusionCanvas 開発完了ロードマップ
 
-最終更新: 2026-05-17 JST
+最終更新: 2026-05-17 JST (Phase 3-7, 9 実装反映)
 
 ## 目的
 
@@ -153,7 +153,8 @@
 
 - [x] 生成、Inpainting、手動編集の画像が R2 に保存される
 - [x] DB には永続的に参照可能な URL または object key が保存される
-- [ ] local memory store と database store の両方で同じ API 契約が保たれる
+- [x] local memory store と database store の両方で同じ API 契約が保たれる
+- [x] memory store の単体テスト実装済み (#52)
 
 検証:
 
@@ -163,15 +164,15 @@
 
 ### Phase 3: Replicate 推論実装
 
-- [ ] Replicate client を `apps/api/internal/infrastructure/replicate` に追加する
-- [ ] ToonCrafter `fofr/tooncrafter` の request / response adapter を実装する
-- [ ] SDXL Inpainting `lucataco/sdxl-inpainting` の request / response adapter を実装する
-- [ ] 推論開始、polling、成功、失敗、timeout、cancel の状態遷移を usecase から呼び出せるようにする
-- [ ] Replicate 出力 URL の download 処理を追加する
-- [ ] 取得した画像 / 動画を R2 に保存する
-- [ ] Replicate API の失敗詳細を API error / job error に安全に反映する
-- [ ] 料金が発生するため、外部 API integration test は明示的な環境変数で opt-in にする
-- [ ] mock client を使った成功 / 失敗 / timeout テストを追加する
+- [x] Replicate client を `apps/api/internal/infrastructure/replicate` に追加する (PR #40)
+- [x] ToonCrafter `fofr/tooncrafter` の request / response adapter を実装する (PR #40)
+- [x] SDXL Inpainting `lucataco/sdxl-inpainting` の request / response adapter を実装する (PR #40)
+- [x] 推論開始、polling、成功、失敗、timeout、cancel の状態遷移を usecase から呼び出せるようにする (PR #40)
+- [x] Replicate 出力 URL の download 処理を追加する (PR #40)
+- [x] 取得した画像 / 動画を R2 に保存する (PR #40)
+- [x] Replicate API の失敗詳細を API error / job error に安全に反映する (PR #40)
+- [x] 料金が発生するため、外部 API integration test は明示的な環境変数で opt-in にする (PR #40)
+- [x] mock client を使った成功 / 失敗 / timeout テストを追加する (PR #40)
 
 受け入れ基準:
 
