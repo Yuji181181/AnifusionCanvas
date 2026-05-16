@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
+import { useEffect } from 'react'
 import { apiClient } from '@/lib/api-client'
 import { useFrameStore } from '@/stores/frame-store'
 
@@ -9,11 +10,16 @@ export function Timeline() {
   const setFrames = useFrameStore((state) => state.setFrames)
   const setSelectedFrameId = useFrameStore((state) => state.setSelectedFrameId)
 
-  useQuery({
+  const framesQuery = useQuery({
     queryKey: ['frames', projectId],
     queryFn: () => apiClient.listFrames(projectId),
-    onSuccess: (data) => setFrames(data.frames),
   })
+
+  useEffect(() => {
+    if (framesQuery.data) {
+      setFrames(framesQuery.data.frames)
+    }
+  }, [framesQuery.data, setFrames])
 
   return (
     <section className="timeline" aria-label="frame timeline">
