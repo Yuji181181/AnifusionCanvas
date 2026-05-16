@@ -328,7 +328,7 @@ progress {
   width: 100%;
 }
 
-.frame-thumb span {
+.frame-thumb span.frame-index {
   background: rgba(255, 255, 255, 0.9);
   border-radius: 999px;
   font-size: 12px;
@@ -337,6 +337,56 @@ progress {
   padding: 3px 7px;
   position: absolute;
   top: 8px;
+}
+
+.frame-thumb .drag-handle {
+  background: rgba(23, 32, 51, 0.5);
+  border-radius: 4px;
+  color: #ffffff;
+  cursor: grab;
+  left: 50%;
+  opacity: 0;
+  padding: 3px;
+  position: absolute;
+  top: 4px;
+  transform: translateX(-50%);
+  transition: opacity 120ms;
+}
+
+.frame-thumb:hover .drag-handle {
+  opacity: 1;
+}
+
+.frame-thumb:active .drag-handle {
+  cursor: grabbing;
+}
+
+.frame-kind-tag {
+  align-items: center;
+  border-radius: 4px;
+  bottom: 4px;
+  display: flex;
+  font-size: 10px;
+  font-weight: 600;
+  gap: 2px;
+  padding: 2px 6px;
+  position: absolute;
+  right: 4px;
+}
+
+.frame-kind-generated {
+  background: rgba(59, 130, 246, 0.88);
+  color: #ffffff;
+}
+
+.frame-kind-inpainted {
+  background: rgba(139, 92, 246, 0.88);
+  color: #ffffff;
+}
+
+.frame-kind-edited {
+  background: rgba(234, 179, 8, 0.88);
+  color: #172033;
 }
 
 .canvas-panel {
