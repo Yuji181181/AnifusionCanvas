@@ -36,6 +36,12 @@ jobs:
         run: bunx playwright install chromium --with-deps
         working-directory: apps/web
 
+      - name: Start preview server
+        run: bun run preview --port 3000 &
+        working-directory: apps/web
+        env:
+          VITE_API_BASE_URL: http://localhost:8080
+
       - name: Test E2E
         run: bun run test:e2e
         working-directory: apps/web
