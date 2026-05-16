@@ -17,6 +17,23 @@ curl http://127.0.0.1:8080/health
 ## Health Check
 
 - `GET /health`
+- `GET /health/dependencies`
+
+`/health/dependencies` は外部依存の状態を返す。未設定の依存は `skipped`、接続失敗は `error` になる。
+
+```bash
+curl http://127.0.0.1:8080/health/dependencies
+```
+
+## Database Migrations
+
+TiDB/MySQL 向けのマイグレーションは `internal/infrastructure/db/migrations` に置く。
+
+```bash
+migrate -path internal/infrastructure/db/migrations -database "$DATABASE_URL" up
+```
+
+SQL query は `internal/infrastructure/db/query` に置き、sqlc 生成対象にする。
 
 ## Required Environment Variables
 

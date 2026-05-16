@@ -6,6 +6,7 @@ import (
 	"github.com/haseg/anifusion-canvas/apps/api/internal/config"
 	"github.com/haseg/anifusion-canvas/apps/api/internal/http/handler"
 	"github.com/haseg/anifusion-canvas/apps/api/internal/http/router"
+	"github.com/haseg/anifusion-canvas/apps/api/internal/infrastructure/dependency"
 	"github.com/haseg/anifusion-canvas/apps/api/internal/usecase"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
@@ -32,7 +33,8 @@ func NewApp() (*App, error) {
 
 	studioService := usecase.NewStudioService()
 	studioHandler := handler.NewStudioHandler(studioService)
-	router.Register(e, studioHandler)
+	healthHandler := handler.NewHealthHandler(dependency.NewChecker(cfg))
+	router.Register(e, studioHandler, healthHandler)
 
 	return &App{e: e, cfg: cfg}, nil
 }
