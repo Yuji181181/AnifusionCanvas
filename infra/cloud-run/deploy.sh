@@ -25,6 +25,7 @@ done < "$ROOT_DIR/.env"
 set +a
 
 export FRONTEND_ORIGIN="${FRONTEND_ORIGIN:-https://anifusion-canvas.pages.dev}"
+export STUDIO_STORE="${STUDIO_STORE:-database}"
 "$ROOT_DIR/infra/cloud-run/render-env.sh" > "$ENV_FILE"
 
 "$ROOT_DIR/infra/cloud-run/docker-login.sh"

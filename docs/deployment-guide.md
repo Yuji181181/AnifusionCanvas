@@ -89,10 +89,12 @@ API が本番で利用する認証情報や接続先を設定する。
 - `R2_PUBLIC_BASE_URL`
 - `R2_ENDPOINT_URL`
 - `REPLICATE_API_TOKEN`
+- `STUDIO_STORE`
 
 #### 注意
 
 - `DATABASE_URL` は **Go MySQL ドライバ互換のDSN** を使う
+- `STUDIO_STORE` は DB-backed store を使う場合 `database` にする
 - 機密情報は将来的には Secret Manager に寄せたほうがよい
 - 最初は env file 運用で問題ない
 
@@ -186,6 +188,7 @@ bash infra/cloud-run/deploy.sh
 
 ```bash
 curl https://YOUR_CLOUD_RUN_URL/health
+curl https://YOUR_CLOUD_RUN_URL/health/dependencies
 ```
 
 期待レスポンス:
@@ -193,6 +196,8 @@ curl https://YOUR_CLOUD_RUN_URL/health
 ```json
 {"status":"ok"}
 ```
+
+`/health/dependencies` は `database`, `replicate`, `r2`, `ffmpeg` がすべて `ok` であることを確認する。
 
 ---
 
@@ -214,6 +219,7 @@ https://anifusion-api-xxxxx-an.a.run.app
 - Pages の `VITE_API_BASE_URL` が Cloud Run URL になっている
 - `R2_PUBLIC_BASE_URL` を使う場合は公開URLが正しい
 - API の `/health` が通る
+- API の `/health/dependencies` が `ok` を返す
 - フロントから API への CORS エラーが出ない
 
 ---

@@ -46,6 +46,7 @@ jobs:
           REPLICATE_API_TOKEN=${{ secrets.REPLICATE_API_TOKEN }}
           APP_ENV=production
           API_PORT=8080
+          STUDIO_STORE=database
           FRONTEND_ORIGIN=https://anifusion-canvas.pages.dev
           VITE_API_BASE_URL=https://anifusion-api-976317870900.asia-northeast1.run.app
           EOF
