@@ -102,8 +102,10 @@ func TestStudioRoutesRejectInvalidRequests(t *testing.T) {
 			method: http.MethodPost,
 			path:   "/inference/generate",
 			body: map[string]any{
-				"prompt":     "turn around",
-				"frameCount": 2,
+				"prompt":            "turn around",
+				"frameCount":        2,
+				"startImageDataUrl": "data:image/png;base64,start",
+				"endImageDataUrl":   "data:image/png;base64,end",
 			},
 		},
 		{
@@ -111,8 +113,34 @@ func TestStudioRoutesRejectInvalidRequests(t *testing.T) {
 			method: http.MethodPost,
 			path:   "/inference/generate",
 			body: map[string]any{
-				"projectId":  "project-1",
-				"frameCount": 2,
+				"projectId":         "project-1",
+				"frameCount":        2,
+				"startImageDataUrl": "data:image/png;base64,start",
+				"endImageDataUrl":   "data:image/png;base64,end",
+			},
+		},
+		{
+			name:   "generate invalid frame count",
+			method: http.MethodPost,
+			path:   "/inference/generate",
+			body: map[string]any{
+				"projectId":         "project-1",
+				"prompt":            "turn around",
+				"frameCount":        1,
+				"startImageDataUrl": "data:image/png;base64,start",
+				"endImageDataUrl":   "data:image/png;base64,end",
+			},
+		},
+		{
+			name:   "generate invalid start image",
+			method: http.MethodPost,
+			path:   "/inference/generate",
+			body: map[string]any{
+				"projectId":         "project-1",
+				"prompt":            "turn around",
+				"frameCount":        2,
+				"startImageDataUrl": "https://example.test/start.png",
+				"endImageDataUrl":   "data:image/png;base64,end",
 			},
 		},
 		{
@@ -127,10 +155,30 @@ func TestStudioRoutesRejectInvalidRequests(t *testing.T) {
 			},
 		},
 		{
+			name:   "inpaint invalid strength",
+			method: http.MethodPost,
+			path:   "/inference/inpaint",
+			body: map[string]any{
+				"projectId":   "project-1",
+				"frameId":     "frame-1",
+				"prompt":      "fix hand",
+				"maskDataUrl": "data:image/png;base64,mask",
+				"strength":    1.2,
+			},
+		},
+		{
 			name:   "update missing image",
 			method: http.MethodPut,
 			path:   "/projects/project-1/frames/frame-1",
 			body:   map[string]any{},
+		},
+		{
+			name:   "update invalid image",
+			method: http.MethodPut,
+			path:   "/projects/project-1/frames/frame-1",
+			body: map[string]any{
+				"imageDataUrl": "https://example.test/edited.png",
+			},
 		},
 		{
 			name:   "export invalid fps",
@@ -139,6 +187,15 @@ func TestStudioRoutesRejectInvalidRequests(t *testing.T) {
 			body: map[string]any{
 				"projectId": "project-1",
 				"fps":       0,
+			},
+		},
+		{
+			name:   "export too large fps",
+			method: http.MethodPost,
+			path:   "/export/video",
+			body: map[string]any{
+				"projectId": "project-1",
+				"fps":       120,
 			},
 		},
 	}

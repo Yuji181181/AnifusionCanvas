@@ -42,6 +42,15 @@ func (h *StudioHandler) GenerateFrames(c echo.Context) error {
 	if isBlank(input.Prompt) {
 		return echo.NewHTTPError(http.StatusBadRequest, "prompt is required")
 	}
+	if input.FrameCount < 2 || input.FrameCount > 12 {
+		return echo.NewHTTPError(http.StatusBadRequest, "frameCount must be between 2 and 12")
+	}
+	if !isDataURL(input.StartImageDataURL) {
+		return echo.NewHTTPError(http.StatusBadRequest, "startImageDataUrl must be a data URL")
+	}
+	if !isDataURL(input.EndImageDataURL) {
+		return echo.NewHTTPError(http.StatusBadRequest, "endImageDataUrl must be a data URL")
+	}
 
 	return c.JSON(http.StatusAccepted, map[string]any{"job": h.service.GenerateFrames(input)})
 }
@@ -62,6 +71,12 @@ func (h *StudioHandler) InpaintFrame(c echo.Context) error {
 	}
 	if isBlank(input.MaskDataURL) {
 		return echo.NewHTTPError(http.StatusBadRequest, "maskDataUrl is required")
+	}
+	if !isDataURL(input.MaskDataURL) {
+		return echo.NewHTTPError(http.StatusBadRequest, "maskDataUrl must be a data URL")
+	}
+	if input.Strength < 0.1 || input.Strength > 1 {
+		return echo.NewHTTPError(http.StatusBadRequest, "strength must be between 0.1 and 1")
 	}
 
 	return c.JSON(http.StatusAccepted, map[string]any{"job": h.service.InpaintFrame(input)})
@@ -84,6 +99,9 @@ func (h *StudioHandler) UpdateFrame(c echo.Context) error {
 	if isBlank(input.ImageDataURL) {
 		return echo.NewHTTPError(http.StatusBadRequest, "imageDataUrl is required")
 	}
+	if !isDataURL(input.ImageDataURL) {
+		return echo.NewHTTPError(http.StatusBadRequest, "imageDataUrl must be a data URL")
+	}
 
 	frame, err := h.service.UpdateFrame(input)
 	if err != nil {
@@ -103,6 +121,9 @@ func (h *StudioHandler) ExportVideo(c echo.Context) error {
 	}
 	if input.FPS <= 0 {
 		return echo.NewHTTPError(http.StatusBadRequest, "fps must be greater than 0")
+	}
+	if input.FPS > 60 {
+		return echo.NewHTTPError(http.StatusBadRequest, "fps must be 60 or less")
 	}
 
 	return c.JSON(http.StatusAccepted, map[string]any{"job": h.service.ExportVideo(input)})
@@ -127,4 +148,8 @@ func (h *StudioHandler) GetJob(c echo.Context) error {
 
 func isBlank(value string) bool {
 	return strings.TrimSpace(value) == ""
+}
+
+func isDataURL(value string) bool {
+	return strings.HasPrefix(strings.TrimSpace(value), "data:")
 }
