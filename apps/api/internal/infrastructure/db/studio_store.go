@@ -79,6 +79,74 @@ ORDER BY frame_index ASC`, projectID)
 	return frames, nil
 }
 
+func (s *StudioStore) UpsertProject(project domain.Project) (domain.Project, error) {
+	if err := upsertStudioProject(s.db, project.ID, project.Name); err != nil {
+		return domain.Project{}, err
+	}
+
+	created, ok, err := s.GetProject(project.ID)
+	if err != nil {
+		return domain.Project{}, err
+	}
+	if !ok {
+		return domain.Project{}, fmt.Errorf("project not found after upsert")
+	}
+
+	return created, nil
+}
+
+func (s *StudioStore) GetProject(projectID string) (domain.Project, bool, error) {
+	var project domain.Project
+	err := s.db.QueryRow(`
+SELECT
+  id,
+  name,
+  DATE_FORMAT(created_at, '%Y-%m-%dT%H:%i:%sZ'),
+  DATE_FORMAT(updated_at, '%Y-%m-%dT%H:%i:%sZ')
+FROM studio_projects
+WHERE id = ?`, projectID).Scan(
+		&project.ID,
+		&project.Name,
+		&project.CreatedAt,
+		&project.UpdatedAt,
+	)
+	if err == sql.ErrNoRows {
+		return domain.Project{}, false, nil
+	}
+	if err != nil {
+		return domain.Project{}, false, err
+	}
+
+	return project, true, nil
+}
+
+func (s *StudioStore) UpdateProject(project domain.Project) (domain.Project, bool, error) {
+	current, ok, err := s.GetProject(project.ID)
+	if err != nil {
+		return domain.Project{}, false, err
+	}
+	if !ok {
+		return domain.Project{}, false, nil
+	}
+	if current.Name == project.Name {
+		return current, true, nil
+	}
+
+	_, err = s.db.Exec(`
+UPDATE studio_projects
+SET name = ?
+WHERE id = ?`, project.Name, project.ID)
+	if err != nil {
+		return domain.Project{}, false, err
+	}
+
+	updated, ok, err := s.GetProject(project.ID)
+	if err != nil {
+		return domain.Project{}, false, err
+	}
+	return updated, ok, nil
+}
+
 func (s *StudioStore) ReplaceFrames(projectID string, frames []domain.Frame) error {
 	tx, err := s.db.Begin()
 	if err != nil {
@@ -86,7 +154,7 @@ func (s *StudioStore) ReplaceFrames(projectID string, frames []domain.Frame) err
 	}
 	defer tx.Rollback()
 
-	if err := upsertProject(tx, projectID); err != nil {
+	if err := upsertProjectTx(tx, projectID); err != nil {
 		return err
 	}
 	if _, err := tx.Exec(`DELETE FROM studio_frames WHERE project_id = ?`, projectID); err != nil {
@@ -143,7 +211,7 @@ func (s *StudioStore) UpsertFrame(frame domain.Frame) error {
 	}
 	defer tx.Rollback()
 
-	if err := upsertProject(tx, frame.ProjectID); err != nil {
+	if err := upsertProjectTx(tx, frame.ProjectID); err != nil {
 		return err
 	}
 	if err := upsertFrame(tx, frame); err != nil {
@@ -253,7 +321,7 @@ WHERE id = ?`, jobID).Scan(
 	return job, true, nil
 }
 
-func upsertProject(tx *sql.Tx, projectID string) error {
+func upsertProjectTx(tx *sql.Tx, projectID string) error {
 	_, err := tx.Exec(`
 INSERT INTO studio_projects (
   id,
@@ -261,6 +329,20 @@ INSERT INTO studio_projects (
 ) VALUES (?, ?)
 ON DUPLICATE KEY UPDATE
   name = VALUES(name)`, projectID, projectID)
+	return err
+}
+
+func upsertStudioProject(db *sql.DB, projectID string, name string) error {
+	if name == "" {
+		name = projectID
+	}
+	_, err := db.Exec(`
+INSERT INTO studio_projects (
+  id,
+  name
+) VALUES (?, ?)
+ON DUPLICATE KEY UPDATE
+  name = VALUES(name)`, projectID, name)
 	return err
 }
 

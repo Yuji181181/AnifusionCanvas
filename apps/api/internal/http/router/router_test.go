@@ -20,6 +20,32 @@ func TestStudioWorkflowRoutes(t *testing.T) {
 	e := newTestEcho()
 	projectID := "http-project"
 
+	createProjectRes := performJSON(t, e, http.MethodPost, "/projects", map[string]any{
+		"id":   projectID,
+		"name": "HTTP project",
+	})
+	if createProjectRes.Code != http.StatusCreated {
+		t.Fatalf("expected create project status %d, got %d: %s", http.StatusCreated, createProjectRes.Code, createProjectRes.Body.String())
+	}
+
+	var projectPayload domain.ProjectResponse
+	decodeJSON(t, createProjectRes, &projectPayload)
+	if projectPayload.Project.ID != projectID || projectPayload.Project.Name != "HTTP project" {
+		t.Fatalf("unexpected created project: %#v", projectPayload.Project)
+	}
+
+	updateProjectRes := performJSON(t, e, http.MethodPut, "/projects/"+projectID, map[string]any{
+		"name": "Renamed HTTP project",
+	})
+	if updateProjectRes.Code != http.StatusOK {
+		t.Fatalf("expected update project status %d, got %d: %s", http.StatusOK, updateProjectRes.Code, updateProjectRes.Body.String())
+	}
+
+	getProjectRes := performJSON(t, e, http.MethodGet, "/projects/"+projectID, nil)
+	if getProjectRes.Code != http.StatusOK {
+		t.Fatalf("expected get project status %d, got %d: %s", http.StatusOK, getProjectRes.Code, getProjectRes.Body.String())
+	}
+
 	generateBody := map[string]any{
 		"projectId":         projectID,
 		"prompt":            "clean character turn",
@@ -88,6 +114,24 @@ func TestStudioUpdateRouteReturnsNotFoundForMissingFrame(t *testing.T) {
 	assertErrorResponse(t, res, "Not Found", "frame not found")
 }
 
+func TestStudioProjectRoutesReturnNotFound(t *testing.T) {
+	e := newTestEcho()
+
+	getRes := performJSON(t, e, http.MethodGet, "/projects/missing-project", nil)
+	if getRes.Code != http.StatusNotFound {
+		t.Fatalf("expected get project status %d, got %d: %s", http.StatusNotFound, getRes.Code, getRes.Body.String())
+	}
+	assertErrorResponse(t, getRes, "Not Found", "project not found")
+
+	updateRes := performJSON(t, e, http.MethodPut, "/projects/missing-project", map[string]any{
+		"name": "Missing project",
+	})
+	if updateRes.Code != http.StatusNotFound {
+		t.Fatalf("expected update project status %d, got %d: %s", http.StatusNotFound, updateRes.Code, updateRes.Body.String())
+	}
+	assertErrorResponse(t, updateRes, "Not Found", "project not found")
+}
+
 func TestStudioRoutesRejectInvalidRequests(t *testing.T) {
 	e := newTestEcho()
 
@@ -97,6 +141,28 @@ func TestStudioRoutesRejectInvalidRequests(t *testing.T) {
 		path   string
 		body   map[string]any
 	}{
+		{
+			name:   "create project missing id",
+			method: http.MethodPost,
+			path:   "/projects",
+			body: map[string]any{
+				"name": "Demo project",
+			},
+		},
+		{
+			name:   "create project missing name",
+			method: http.MethodPost,
+			path:   "/projects",
+			body: map[string]any{
+				"id": "project-1",
+			},
+		},
+		{
+			name:   "update project missing name",
+			method: http.MethodPut,
+			path:   "/projects/project-1",
+			body:   map[string]any{},
+		},
 		{
 			name:   "generate missing project",
 			method: http.MethodPost,

@@ -13,6 +13,13 @@ export type Frame = {
   updatedAt: string
 }
 
+export type Project = {
+  id: string
+  name: string
+  createdAt: string
+  updatedAt: string
+}
+
 export type Job<T = unknown> = {
   id: string
   projectId?: string
@@ -24,6 +31,20 @@ export type Job<T = unknown> = {
   error?: string
   createdAt: string
   updatedAt: string
+}
+
+export type CreateProjectRequest = {
+  id: string
+  name: string
+}
+
+export type ProjectResponse = {
+  project: Project
+}
+
+export type UpdateProjectRequest = {
+  id: string
+  name: string
 }
 
 export type GenerateFramesRequest = {

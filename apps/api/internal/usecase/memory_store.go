@@ -7,16 +7,64 @@ import (
 )
 
 type MemoryStudioStore struct {
-	mu     sync.RWMutex
-	frames map[string][]domain.Frame
-	jobs   map[string]domain.Job
+	mu       sync.RWMutex
+	projects map[string]domain.Project
+	frames   map[string][]domain.Frame
+	jobs     map[string]domain.Job
 }
 
 func NewMemoryStudioStore() *MemoryStudioStore {
 	return &MemoryStudioStore{
-		frames: make(map[string][]domain.Frame),
-		jobs:   make(map[string]domain.Job),
+		projects: make(map[string]domain.Project),
+		frames:   make(map[string][]domain.Frame),
+		jobs:     make(map[string]domain.Job),
 	}
+}
+
+func (s *MemoryStudioStore) UpsertProject(project domain.Project) (domain.Project, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	current, exists := s.projects[project.ID]
+	timestamp := now()
+	if !exists {
+		current = domain.Project{
+			ID:        project.ID,
+			CreatedAt: timestamp,
+		}
+	}
+	current.Name = project.Name
+	if current.Name == "" {
+		current.Name = project.ID
+	}
+	current.UpdatedAt = timestamp
+	if current.CreatedAt == "" {
+		current.CreatedAt = timestamp
+	}
+	s.projects[current.ID] = current
+	return current, nil
+}
+
+func (s *MemoryStudioStore) GetProject(projectID string) (domain.Project, bool, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	project, ok := s.projects[projectID]
+	return project, ok, nil
+}
+
+func (s *MemoryStudioStore) UpdateProject(project domain.Project) (domain.Project, bool, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	current, ok := s.projects[project.ID]
+	if !ok {
+		return domain.Project{}, false, nil
+	}
+	current.Name = project.Name
+	current.UpdatedAt = now()
+	s.projects[current.ID] = current
+	return current, true, nil
 }
 
 func (s *MemoryStudioStore) ListFrames(projectID string) ([]domain.Frame, error) {

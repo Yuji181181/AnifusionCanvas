@@ -35,6 +35,74 @@ func TestGenerateFramesCreatesTimeline(t *testing.T) {
 	}
 }
 
+func TestProjectLifecycle(t *testing.T) {
+	service := NewStudioService()
+
+	project, err := service.CreateProject(domain.CreateProjectRequest{
+		ID:   "project-1",
+		Name: "Demo project",
+	})
+	if err != nil {
+		t.Fatalf("create project failed: %v", err)
+	}
+	if project.Name != "Demo project" {
+		t.Fatalf("expected project name to be set, got %q", project.Name)
+	}
+
+	project, ok, err := service.GetProject("project-1")
+	if err != nil {
+		t.Fatalf("get project failed: %v", err)
+	}
+	if !ok {
+		t.Fatalf("expected project to exist")
+	}
+	if project.CreatedAt == "" || project.UpdatedAt == "" {
+		t.Fatalf("expected timestamps to be set")
+	}
+
+	project, ok, err = service.UpdateProject(domain.UpdateProjectRequest{
+		ID:   "project-1",
+		Name: "Renamed project",
+	})
+	if err != nil {
+		t.Fatalf("update project failed: %v", err)
+	}
+	if !ok {
+		t.Fatalf("expected project update to find project")
+	}
+	if project.Name != "Renamed project" {
+		t.Fatalf("expected project to be renamed, got %q", project.Name)
+	}
+}
+
+func TestGenerateFramesDoesNotOverwriteProjectName(t *testing.T) {
+	service := NewStudioService()
+	_, err := service.CreateProject(domain.CreateProjectRequest{
+		ID:   "project-1",
+		Name: "Story cut 01",
+	})
+	if err != nil {
+		t.Fatalf("create project failed: %v", err)
+	}
+
+	job := service.GenerateFrames(domain.GenerateFramesRequest{
+		ProjectID:  "project-1",
+		FrameCount: 2,
+	})
+	waitForJob(t, service, job.ID)
+
+	project, ok, err := service.GetProject("project-1")
+	if err != nil {
+		t.Fatalf("get project failed: %v", err)
+	}
+	if !ok {
+		t.Fatalf("expected project to exist")
+	}
+	if project.Name != "Story cut 01" {
+		t.Fatalf("expected project name to be preserved, got %q", project.Name)
+	}
+}
+
 func TestUpdateFrameMarksFrameEdited(t *testing.T) {
 	service := NewStudioService()
 	job := service.GenerateFrames(domain.GenerateFramesRequest{
