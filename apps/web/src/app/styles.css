@@ -414,3 +414,12 @@ progress {
     padding: 18px;
   }
 }
+
+.field-error {
+  align-items: center;
+  color: #cc3333;
+  display: flex;
+  font-size: 13px;
+  gap: 4px;
+  margin-top: 4px;
+}
