@@ -135,6 +135,16 @@ type ExportVideoRequest struct {
 	FPS       int    `json:"fps"`
 }
 
+type ExportArtifact struct {
+	Key         string `json:"key"`
+	URL         string `json:"url"`
+	ContentType string `json:"contentType"`
+	Size        int64  `json:"size"`
+	FrameCount  int    `json:"frameCount"`
+	FPS         int    `json:"fps"`
+}
+
 type ExportVideoResult struct {
-	VideoURL string `json:"videoUrl"`
+	VideoURL string          `json:"videoUrl"`
+	Artifact *ExportArtifact `json:"artifact,omitempty"`
 }

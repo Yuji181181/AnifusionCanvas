@@ -118,7 +118,7 @@
 - [x] Project の作成、取得、更新 API を追加する
 - [x] Frame の削除、並び替え、kind / note 更新 API を追加する
 - [x] Job の type 別 result schema を Go / TypeScript 双方で厳密化する
-- [ ] `packages/contracts` に `/health/dependencies`、Project、storage object、export artifact の型を追加する
+- [x] `packages/contracts` に `/health/dependencies`、Project、storage object、export artifact の型を追加する
 - [ ] API request / response の Zod schema を web 側で利用できる形に整理する
 - [ ] DB migration に projects / frames / jobs の不足メタデータを追加する
 - [ ] migration の down 手順とバックアップ注意点を更新する
@@ -343,7 +343,7 @@
 ## 推奨 PR 分割
 
 - [x] PR 1: Roadmap と Issue 整備 (#20)
-- [ ] PR 2: API contract / Project API / contracts 型補強 (#21)
+- [x] PR 2: API contract / Project API / contracts 型補強 (#21)
 - [ ] PR 3: R2 storage client と画像保存 (#22)
 - [ ] PR 4: Replicate client と mock 推論テスト (#23)
 - [ ] PR 5: ToonCrafter 生成フロー (#23)
