@@ -1,7 +1,10 @@
 import type { GenerateFramesResult } from '@anifusion/contracts'
+import type { GenerationFormValues } from '@/lib/form-schemas'
+import { zodResolver } from '@hookform/resolvers/zod'
 import { useMutation, useQuery } from '@tanstack/react-query'
-import { ImagePlus, Play } from 'lucide-react'
-import { useEffect, useMemo, useState } from 'react'
+import { AlertTriangle, ImagePlus, Play } from 'lucide-react'
+import { useEffect, useMemo } from 'react'
+import { useForm } from 'react-hook-form'
 import { JobStatusPanel } from '@/components/shared/job-status'
 import { apiClient } from '@/lib/api-client'
 import { createDemoFrameDataUrl } from '@/lib/demo-images'
@@ -13,10 +16,24 @@ export function GenerationPanel() {
   const setFrames = useFrameStore((state) => state.setFrames)
   const activeJob = useFrameStore((state) => state.activeJob)
   const setActiveJob = useFrameStore((state) => state.setActiveJob)
-  const [prompt, setPrompt] = useState('風に髪がなびきながら振り向く')
-  const [frameCount, setFrameCount] = useState(6)
-  const [startImage, setStartImage] = useState('')
-  const [endImage, setEndImage] = useState('')
+
+  const {
+    register,
+    handleSubmit,
+    setValue,
+    watch,
+    formState: { errors },
+  } = useForm<GenerationFormValues>({
+    resolver: zodResolver(generationFormSchema),
+    defaultValues: {
+      projectId,
+      prompt: '風に髪がなびきながら振り向く',
+      negativePrompt: 'broken hands, distorted lines',
+      frameCount: 6,
+      startImageDataUrl: '',
+      endImageDataUrl: '',
+    },
+  })
 
   const demoImages = useMemo(
     () => ({
@@ -27,9 +44,10 @@ export function GenerationPanel() {
   )
 
   useEffect(() => {
-    setStartImage(demoImages.start)
-    setEndImage(demoImages.end)
-  }, [demoImages])
+    setValue('startImageDataUrl', demoImages.start)
+    setValue('endImageDataUrl', demoImages.end)
+    setValue('projectId', projectId)
+  }, [demoImages, projectId, setValue])
 
   const jobQuery = useQuery({
     queryKey: ['job', activeJob?.id],
@@ -55,16 +73,20 @@ export function GenerationPanel() {
     onSuccess: (data) => setActiveJob(data.job),
   })
 
-  function runGeneration() {
+  function runGeneration(values: GenerationFormValues) {
     mutation.mutate({
-      projectId,
-      prompt,
-      frameCount,
-      startImageDataUrl: startImage,
-      endImageDataUrl: endImage,
-      negativePrompt: 'broken hands, distorted lines',
+      projectId: values.projectId,
+      prompt: values.prompt,
+      frameCount: values.frameCount,
+      startImageDataUrl: values.startImageDataUrl,
+      endImageDataUrl: values.endImageDataUrl,
+      negativePrompt: values.negativePrompt,
     })
   }
+
+  const startImage = watch('startImageDataUrl')
+  const endImage = watch('endImageDataUrl')
+  const isGenerating = mutation.isPending || (activeJob?.status !== 'failed' && activeJob?.status !== 'succeeded' && !!activeJob)
 
   return (
     <section className="work-grid">
@@ -74,32 +96,51 @@ export function GenerationPanel() {
           <h1>AIで中割りを生成</h1>
           <p>2枚の原画と動きの指示から、編集可能なフレーム列を生成します。</p>
         </div>
-        <div className="form-grid">
+        <form className="form-grid" onSubmit={handleSubmit(runGeneration)}>
           <label>
             動きの指示
-            <textarea value={prompt} onChange={(event) => setPrompt(event.target.value)} rows={4} />
+            <textarea {...register('prompt')} rows={4} />
+            {errors.prompt && (
+              <span className="field-error"><AlertTriangle aria-hidden="true" size={14} /> {errors.prompt.message}</span>
+            )}
           </label>
           <label>
             生成枚数
             <input
+              {...register('frameCount', { valueAsNumber: true })}
               max={12}
               min={2}
-              onChange={(event) => setFrameCount(Number(event.target.value))}
               type="number"
-              value={frameCount}
             />
+            {errors.frameCount && (
+              <span className="field-error"><AlertTriangle aria-hidden="true" size={14} /> {errors.frameCount.message}</span>
+            )}
           </label>
-        </div>
-        <button className="command-button" disabled={mutation.isPending} onClick={runGeneration} type="button">
-          <Play aria-hidden="true" />
-          生成を開始
-        </button>
+          <button className="command-button" disabled={isGenerating} type="submit">
+            <Play aria-hidden="true" />
+            生成を開始
+          </button>
+        </form>
       </div>
       <div className="panel">
         <div className="preview-pair">
-          <FrameUploadPreview imageUrl={startImage} label="原画 1" onChange={setStartImage} />
-          <FrameUploadPreview imageUrl={endImage} label="原画 2" onChange={setEndImage} />
+          <FrameUploadPreview
+            imageUrl={startImage}
+            label="原画 1"
+            onChange={(url) => setValue('startImageDataUrl', url, { shouldValidate: true })}
+          />
+          <FrameUploadPreview
+            imageUrl={endImage}
+            label="原画 2"
+            onChange={(url) => setValue('endImageDataUrl', url, { shouldValidate: true })}
+          />
         </div>
+        {errors.startImageDataUrl && (
+          <p className="field-error"><AlertTriangle aria-hidden="true" size={14} /> {errors.startImageDataUrl.message}</p>
+        )}
+        {errors.endImageDataUrl && (
+          <p className="field-error"><AlertTriangle aria-hidden="true" size={14} /> {errors.endImageDataUrl.message}</p>
+        )}
         <JobStatusPanel job={activeJob} />
       </div>
     </section>

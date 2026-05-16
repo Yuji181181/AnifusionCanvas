@@ -1,7 +1,10 @@
 import type { ExportVideoResult } from '@anifusion/contracts'
+import type { ExportFormValues } from '@/lib/form-schemas'
+import { zodResolver } from '@hookform/resolvers/zod'
 import { useMutation, useQuery } from '@tanstack/react-query'
-import { Download, Film } from 'lucide-react'
+import { AlertTriangle, Download, Film } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
+import { useForm } from 'react-hook-form'
 import { JobStatusPanel } from '@/components/shared/job-status'
 import { apiClient } from '@/lib/api-client'
 import { useFrameStore } from '@/stores/frame-store'
@@ -11,9 +14,23 @@ export function ExportPanel() {
   const frames = useFrameStore((state) => state.frames)
   const activeJob = useFrameStore((state) => state.activeJob)
   const setActiveJob = useFrameStore((state) => state.setActiveJob)
-  const [fps, setFps] = useState(8)
-  const [previewIndex, setPreviewIndex] = useState(0)
   const exportJob = activeJob?.type === 'export' ? activeJob : undefined
+
+  const {
+    register,
+    handleSubmit,
+    watch,
+    formState: { errors },
+  } = useForm<ExportFormValues>({
+    resolver: zodResolver(exportFormSchema),
+    defaultValues: {
+      projectId,
+      fps: 8,
+    },
+  })
+
+  const fps = watch('fps')
+  const [previewIndex, setPreviewIndex] = useState(0)
 
   useEffect(() => {
     if (frames.length === 0) {
@@ -53,6 +70,12 @@ export function ExportPanel() {
     return undefined
   }, [exportJob])
 
+  function runExport(values: ExportFormValues) {
+    mutation.mutate({ projectId: values.projectId, fps: values.fps })
+  }
+
+  const isExporting = mutation.isPending || Boolean(exportJob && exportJob.status !== 'succeeded' && exportJob.status !== 'failed')
+
   return (
     <section className="work-grid">
       <div className="panel primary-panel">
@@ -61,19 +84,23 @@ export function ExportPanel() {
           <h1>完成フレームを動画に書き出し</h1>
           <p>自動プレビューと最終MP4書き出しを分け、明示的な操作だけで動画化します。</p>
         </div>
-        <label>
-          FPS {fps}
-          <input max={24} min={4} onChange={(event) => setFps(Number(event.target.value))} type="range" value={fps} />
-        </label>
-        <button
-          className="command-button"
-          disabled={frames.length === 0 || mutation.isPending}
-          onClick={() => mutation.mutate({ projectId, fps })}
-          type="button"
-        >
-          <Film aria-hidden="true" />
-          MP4を書き出す
-        </button>
+        <form onSubmit={handleSubmit(runExport)}>
+          <label>
+            FPS {fps}
+            <input {...register('fps', { valueAsNumber: true })} max={24} min={4} type="range" />
+            {errors.fps && (
+              <span className="field-error"><AlertTriangle aria-hidden="true" size={14} /> {errors.fps.message}</span>
+            )}
+          </label>
+          <button
+            className="command-button"
+            disabled={frames.length === 0 || isExporting}
+            type="submit"
+          >
+            <Film aria-hidden="true" />
+            MP4を書き出す
+          </button>
+        </form>
         <JobStatusPanel job={exportJob} />
         {videoUrl ? (
           <a className="download-link" href={videoUrl}>

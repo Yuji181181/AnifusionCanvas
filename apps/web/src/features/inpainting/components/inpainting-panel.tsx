@@ -1,8 +1,11 @@
 import type { InpaintFrameResult } from '@anifusion/contracts'
+import type { InpaintingFormValues } from '@/lib/form-schemas'
+import { zodResolver } from '@hookform/resolvers/zod'
 import { useMutation, useQuery } from '@tanstack/react-query'
-import { Eraser, Wand2 } from 'lucide-react'
+import { AlertTriangle, Eraser, Wand2 } from 'lucide-react'
 import { Canvas, PencilBrush } from 'fabric'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef } from 'react'
+import { useForm } from 'react-hook-form'
 import { JobStatusPanel } from '@/components/shared/job-status'
 import { apiClient } from '@/lib/api-client'
 import { queryClient } from '@/lib/query-client'
@@ -16,8 +19,27 @@ export function InpaintingPanel() {
   const frame = useSelectedFrame()
   const canvasElementRef = useRef<HTMLCanvasElement | null>(null)
   const fabricRef = useRef<Canvas | null>(null)
-  const [prompt, setPrompt] = useState('手の形を自然な握りこぶしに修正')
-  const [strength, setStrength] = useState(0.72)
+
+  const {
+    register,
+    handleSubmit,
+    setValue,
+    formState: { errors },
+  } = useForm<InpaintingFormValues>({
+    resolver: zodResolver(inpaintingFormSchema),
+    defaultValues: {
+      projectId,
+      frameId: frame?.id ?? '',
+      prompt: '手の形を自然な握りこぶしに修正',
+      maskDataUrl: '',
+      strength: 0.72,
+    },
+  })
+
+  useEffect(() => {
+    setValue('projectId', projectId)
+    setValue('frameId', frame?.id ?? '')
+  }, [projectId, frame?.id, setValue])
 
   useEffect(() => {
     if (!canvasElementRef.current) {
@@ -66,23 +88,26 @@ export function InpaintingPanel() {
     onSuccess: (data) => setActiveJob(data.job),
   })
 
-  function runInpaint() {
-    if (!frame || !fabricRef.current) {
+  function runInpaint(values: InpaintingFormValues) {
+    if (!fabricRef.current) {
       return
     }
 
+    const maskDataUrl = fabricRef.current.toDataURL({ format: 'png', multiplier: 1 })
     mutation.mutate({
-      projectId,
-      frameId: frame.id,
-      maskDataUrl: fabricRef.current.toDataURL({ format: 'png', multiplier: 1 }),
-      prompt,
-      strength,
+      projectId: values.projectId,
+      frameId: values.frameId,
+      maskDataUrl,
+      prompt: values.prompt,
+      strength: values.strength,
     })
   }
 
   function clearMask() {
     fabricRef.current?.clear()
   }
+
+  const isRunning = mutation.isPending || Boolean(activeJob?.type === 'inpainting' && activeJob?.status !== 'succeeded' && activeJob?.status !== 'failed')
 
   return (
     <section className="work-grid editor-grid">
@@ -96,30 +121,40 @@ export function InpaintingPanel() {
           <h1>AIで破綻部分だけ修正</h1>
           <p>黒いブラシでマスクを描き、自然言語で修正内容を指定します。</p>
         </div>
-        <label>
-          修正プロンプト
-          <textarea value={prompt} onChange={(event) => setPrompt(event.target.value)} rows={5} />
-        </label>
-        <label>
-          変化量 {strength.toFixed(2)}
-          <input
-            max={1}
-            min={0.1}
-            onChange={(event) => setStrength(Number(event.target.value))}
-            step={0.01}
-            type="range"
-            value={strength}
-          />
-        </label>
-        <div className="button-row">
-          <button className="icon-button" onClick={clearMask} title="マスクを消去" type="button">
-            <Eraser aria-hidden="true" />
-          </button>
-          <button className="command-button" disabled={!frame || mutation.isPending} onClick={runInpaint} type="button">
-            <Wand2 aria-hidden="true" />
-            修正を実行
-          </button>
-        </div>
+        <form onSubmit={handleSubmit(runInpaint)}>
+          <label>
+            修正プロンプト
+            <textarea {...register('prompt')} rows={5} />
+            {errors.prompt && (
+              <span className="field-error"><AlertTriangle aria-hidden="true" size={14} /> {errors.prompt.message}</span>
+            )}
+          </label>
+          <label>
+            変化量
+            <input
+              {...register('strength', { valueAsNumber: true })}
+              max={1}
+              min={0.1}
+              step={0.01}
+              type="range"
+            />
+            {errors.strength && (
+              <span className="field-error"><AlertTriangle aria-hidden="true" size={14} /> {errors.strength.message}</span>
+            )}
+          </label>
+          {errors.frameId && (
+            <p className="field-error"><AlertTriangle aria-hidden="true" size={14} /> {errors.frameId.message}</p>
+          )}
+          <div className="button-row">
+            <button className="icon-button" onClick={clearMask} title="マスクを消去" type="button">
+              <Eraser aria-hidden="true" />
+            </button>
+            <button className="command-button" disabled={!frame || isRunning} type="submit">
+              <Wand2 aria-hidden="true" />
+              修正を実行
+            </button>
+          </div>
+        </form>
         <JobStatusPanel job={activeJob?.type === 'inpainting' ? activeJob : undefined} />
       </div>
     </section>
