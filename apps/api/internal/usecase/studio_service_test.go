@@ -746,3 +746,89 @@ func TestStudioServiceFallsBackToDemoWithoutReplicateClient(t *testing.T) {
 		t.Fatalf("expected no raw video URL in demo mode")
 	}
 }
+
+func testPNGDataURL(t *testing.T) string {
+	t.Helper()
+	img := image.NewRGBA(image.Rect(0, 0, 16, 16))
+	for y := 0; y < 16; y++ {
+		for x := 0; x < 16; x++ {
+			img.SetRGBA(x, y, color.RGBA{R: 100, G: 150, B: 200, A: 255})
+		}
+	}
+	var buf bytes.Buffer
+	if err := png.Encode(&buf, img); err != nil {
+		t.Fatalf("encode PNG: %v", err)
+	}
+	return "data:image/png;base64," + base64.StdEncoding.EncodeToString(buf.Bytes())
+}
+
+func TestExportVideoCreatesMP4(t *testing.T) {
+	if _, err := exec.LookPath("ffmpeg"); err != nil {
+		t.Skip("ffmpeg not available")
+	}
+
+	pngURL := testPNGDataURL(t)
+	service := NewStudioService()
+
+	genJob := service.GenerateFrames(domain.GenerateFramesRequest{
+		ProjectID:         "proj-export",
+		Prompt:            "walk cycle",
+		FrameCount:        2,
+		StartImageDataURL: pngURL,
+		EndImageDataURL:   pngURL,
+	})
+	genJob = waitForJob(t, service, genJob.ID)
+	if genJob.Status != domain.JobStatusSucceeded {
+		t.Fatalf("generation failed: %s", genJob.Error)
+	}
+
+	frames, _ := service.ListFrames("proj-export")
+	for _, frame := range frames {
+		if frame.Kind == domain.FrameKindGenerated {
+			_, err := service.UpdateFrame(context.Background(), domain.UpdateFrameRequest{
+				ProjectID:    "proj-export",
+				FrameID:      frame.ID,
+				ImageDataURL: pngURL,
+				Note:         "test",
+			})
+			if err != nil {
+				t.Fatalf("update frame to PNG failed: %v", err)
+			}
+		}
+	}
+
+	exportJob := service.ExportVideo(domain.ExportVideoRequest{
+		ProjectID: "proj-export",
+		FPS:       12,
+	})
+	exportJob = waitForJob(t, service, exportJob.ID)
+
+	if exportJob.Status != domain.JobStatusSucceeded {
+		t.Fatalf("expected succeeded export job, got %s: %s", exportJob.Status, exportJob.Error)
+	}
+
+	result, ok := exportJob.Result.(domain.ExportVideoResult)
+	if !ok {
+		t.Fatalf("expected typed export result, got %T", exportJob.Result)
+	}
+	if result.VideoURL == "" {
+		t.Fatalf("expected video URL in export result")
+	}
+	if !strings.HasPrefix(result.VideoURL, "data:video/mp4;base64,") {
+		t.Fatalf("expected data URL video, got prefix %q", result.VideoURL[:min(len(result.VideoURL), 50)])
+	}
+}
+
+func TestExportVideoNoFrames(t *testing.T) {
+	service := NewStudioService()
+
+	exportJob := service.ExportVideo(domain.ExportVideoRequest{
+		ProjectID: "empty-project",
+		FPS:       12,
+	})
+	exportJob = waitForJob(t, service, exportJob.ID)
+
+	if exportJob.Status != domain.JobStatusFailed {
+		t.Fatalf("expected failed export with no frames, got %s", exportJob.Status)
+	}
+}

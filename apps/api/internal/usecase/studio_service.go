@@ -5,7 +5,9 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"io"
 	"math"
+	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
@@ -510,23 +512,120 @@ func (s *StudioService) ReorderFrames(input domain.ReorderFramesRequest) ([]doma
 }
 
 func (s *StudioService) ExportVideo(input domain.ExportVideoRequest) domain.Job {
+	if input.FPS <= 0 {
+		input.FPS = 12
+	}
+
 	job := s.createJob(input.ProjectID, domain.JobTypeExport, "動画書き出しを受け付けました")
 	if job.Status == domain.JobStatusFailed {
 		return job
 	}
 
 	go s.runJob(job.ID, func(update func(int, string)) (any, error) {
-		update(24, "フレーム列を確認しています")
-		time.Sleep(250 * time.Millisecond)
-		update(66, "FFmpegエンコードを模擬実行しています")
-		time.Sleep(550 * time.Millisecond)
-		update(92, "書き出し結果を登録しています")
-		time.Sleep(250 * time.Millisecond)
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+		defer cancel()
 
-		return domain.ExportVideoResult{VideoURL: "data:text/plain;base64,RGVtbyBleHBvcnQgaXMgc3VjY2Vzc2Z1bC4="}, nil
+		update(10, "フレーム列を取得しています")
+		frames, err := s.store.ListFrames(input.ProjectID)
+		if err != nil {
+			return nil, fmt.Errorf("フレーム一覧の取得に失敗しました: %w", err)
+		}
+		if len(frames) == 0 {
+			return nil, fmt.Errorf("書き出すフレームがありません")
+		}
+
+		update(30, "フレーム画像をダウンロードしています")
+		tmpDir, err := os.MkdirTemp("", "anifusion-export-*")
+		if err != nil {
+			return nil, fmt.Errorf("create temp dir: %w", err)
+		}
+		defer os.RemoveAll(tmpDir)
+
+		var framePaths []string
+		for i, frame := range frames {
+			ext := ".png"
+			path := filepath.Join(tmpDir, fmt.Sprintf("frame_%04d%s", i+1, ext))
+			data, err := s.downloadFrameImage(ctx, frame.ImageURL)
+			if err != nil {
+				return nil, fmt.Errorf("frame %d のダウンロードに失敗しました: %w", i+1, err)
+			}
+			if err := os.WriteFile(path, data, 0o644); err != nil {
+				return nil, fmt.Errorf("frame %d の保存に失敗しました: %w", i+1, err)
+			}
+			framePaths = append(framePaths, path)
+		}
+
+		update(60, "FFmpegでMP4にエンコードしています")
+		outputPath := filepath.Join(tmpDir, "output.mp4")
+		if err := media.EncodeFramesToMP4(ctx, framePaths, input.FPS, outputPath); err != nil {
+			return nil, fmt.Errorf("MP4エンコードに失敗しました: %w", err)
+		}
+
+		videoData, err := os.ReadFile(outputPath)
+		if err != nil {
+			return nil, fmt.Errorf("出力ファイルの読み取りに失敗しました: %w", err)
+		}
+
+		update(85, "書き出し結果を保存しています")
+		var videoURL string
+		var artifact *domain.ExportArtifact
+		if s.objectStore != nil {
+			exportKey := fmt.Sprintf("projects/%s/exports/%s.mp4", input.ProjectID, job.ID)
+			object, err := s.objectStore.PutBytes(ctx, exportKey, "video/mp4", videoData)
+			if err != nil {
+				return nil, fmt.Errorf("動画の保存に失敗しました: %w", err)
+			}
+			videoURL = object.URL
+			artifact = &domain.ExportArtifact{
+				Key:         object.Key,
+				URL:         object.URL,
+				ContentType: object.ContentType,
+				Size:        object.Size,
+				FrameCount:  len(frames),
+				FPS:         input.FPS,
+			}
+		} else {
+			videoURL = "data:video/mp4;base64," + base64.StdEncoding.EncodeToString(videoData)
+		}
+
+		return domain.ExportVideoResult{
+			VideoURL: videoURL,
+			Artifact: artifact,
+		}, nil
 	})
 
 	return job
+}
+
+func (s *StudioService) downloadFrameImage(ctx context.Context, imageURL string) ([]byte, error) {
+	if strings.HasPrefix(imageURL, "data:") {
+		idx := strings.Index(imageURL, "base64,")
+		if idx < 0 {
+			idx = strings.Index(imageURL, ",")
+			if idx < 0 {
+				return nil, fmt.Errorf("invalid data URL")
+			}
+			return []byte(imageURL[idx+1:]), nil
+		}
+		return base64.StdEncoding.DecodeString(imageURL[idx+7:])
+	}
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, imageURL, nil)
+	if err != nil {
+		return nil, fmt.Errorf("build request: %w", err)
+	}
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("download: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return nil, fmt.Errorf("download returned status %d", resp.StatusCode)
+	}
+
+	return io.ReadAll(resp.Body)
 }
 
 func (s *StudioService) GetJob(jobID string) (domain.Job, bool, error) {
