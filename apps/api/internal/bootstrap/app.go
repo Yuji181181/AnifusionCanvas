@@ -4,6 +4,9 @@ import (
 	"net/http"
 
 	"github.com/haseg/anifusion-canvas/apps/api/internal/config"
+	"github.com/haseg/anifusion-canvas/apps/api/internal/http/handler"
+	"github.com/haseg/anifusion-canvas/apps/api/internal/http/router"
+	"github.com/haseg/anifusion-canvas/apps/api/internal/usecase"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 )
@@ -27,9 +30,9 @@ func NewApp() (*App, error) {
 		AllowMethods: []string{http.MethodGet, http.MethodPost, http.MethodPut, http.MethodDelete, http.MethodOptions},
 	}))
 
-	e.GET("/health", func(c echo.Context) error {
-		return c.JSON(http.StatusOK, map[string]string{"status": "ok"})
-	})
+	studioService := usecase.NewStudioService()
+	studioHandler := handler.NewStudioHandler(studioService)
+	router.Register(e, studioHandler)
 
 	return &App{e: e, cfg: cfg}, nil
 }

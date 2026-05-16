@@ -1,8 +1,416 @@
-html, body, #root {
+:root {
+  color: #172033;
+  background: #eef2f7;
+  font-family:
+    Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
   margin: 0;
   min-height: 100%;
 }
 
-body {
-  font-family: sans-serif;
+button,
+input,
+textarea {
+  font: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+.app-shell {
+  display: grid;
+  grid-template-columns: 280px minmax(0, 1fr);
+  min-height: 100vh;
+}
+
+.sidebar {
+  background: #18202f;
+  color: #f8fafc;
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+  padding: 28px 22px;
+}
+
+.brand {
+  align-items: center;
+  display: flex;
+  gap: 12px;
+}
+
+.brand svg {
+  color: #65d6ad;
+  height: 32px;
+  width: 32px;
+}
+
+.brand strong,
+.brand span {
+  display: block;
+}
+
+.brand span {
+  color: #b7c4d8;
+  font-size: 12px;
+  line-height: 1.45;
+  margin-top: 3px;
+}
+
+.step-nav {
+  display: grid;
+  gap: 8px;
+}
+
+.step-link {
+  align-items: center;
+  border-radius: 8px;
+  color: #d8e1f0;
+  display: flex;
+  gap: 10px;
+  padding: 11px 12px;
+  text-decoration: none;
+}
+
+.step-link.active,
+.step-link:hover {
+  background: #263348;
+  color: #ffffff;
+}
+
+.step-link svg,
+.command-button svg,
+.icon-button svg,
+.download-link svg {
+  height: 18px;
+  width: 18px;
+}
+
+.workspace {
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto;
+  min-width: 0;
+}
+
+.workspace-inner {
+  padding: 28px;
+}
+
+.work-grid,
+.editor-grid {
+  display: grid;
+  gap: 20px;
+  grid-template-columns: minmax(0, 1.1fr) minmax(340px, 0.9fr);
+}
+
+.panel {
+  background: #ffffff;
+  border: 1px solid #d8e0ea;
+  border-radius: 8px;
+  box-shadow: 0 16px 42px rgba(24, 32, 47, 0.08);
+  min-width: 0;
+  padding: 20px;
+}
+
+.primary-panel,
+.side-panel {
+  align-content: start;
+  display: grid;
+  gap: 18px;
+}
+
+.section-heading span {
+  color: #336e62;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.section-heading h1 {
+  font-size: 32px;
+  letter-spacing: 0;
+  line-height: 1.15;
+  margin: 6px 0;
+}
+
+.section-heading p {
+  color: #536176;
+  line-height: 1.65;
+  margin: 0;
+}
+
+.form-grid {
+  display: grid;
+  gap: 14px;
+}
+
+label {
+  color: #3f4c5f;
+  display: grid;
+  font-size: 13px;
+  font-weight: 700;
+  gap: 7px;
+}
+
+textarea,
+input[type="number"] {
+  background: #f8fafc;
+  border: 1px solid #cfd8e5;
+  border-radius: 8px;
+  color: #172033;
+  padding: 11px 12px;
+}
+
+textarea {
+  resize: vertical;
+}
+
+.command-button,
+.download-link {
+  align-items: center;
+  background: #236a5b;
+  border: 0;
+  border-radius: 8px;
+  color: #ffffff;
+  display: inline-flex;
+  font-weight: 800;
+  gap: 9px;
+  justify-content: center;
+  min-height: 42px;
+  padding: 0 16px;
+  text-decoration: none;
+}
+
+.command-button.compact {
+  min-height: 38px;
+}
+
+.command-button:disabled {
+  background: #91a2b5;
+  cursor: not-allowed;
+}
+
+.button-row {
+  align-items: center;
+  display: flex;
+  gap: 10px;
+}
+
+.icon-button {
+  align-items: center;
+  background: #f2f6fa;
+  border: 1px solid #cfd8e5;
+  border-radius: 8px;
+  color: #172033;
+  display: inline-flex;
+  height: 40px;
+  justify-content: center;
+  width: 40px;
+}
+
+.icon-button.active,
+.icon-button:hover {
+  background: #dceee9;
+  border-color: #236a5b;
+  color: #236a5b;
+}
+
+.preview-pair {
+  display: grid;
+  gap: 14px;
+}
+
+.upload-preview {
+  aspect-ratio: 16 / 9;
+  background: #eef4f9;
+  border: 1px dashed #99a9bc;
+  border-radius: 8px;
+  display: grid;
+  overflow: hidden;
+  place-items: center;
+  position: relative;
+}
+
+.upload-preview input {
+  inset: 0;
+  opacity: 0;
+  position: absolute;
+}
+
+.upload-preview img,
+.playback-panel img {
+  height: 100%;
+  object-fit: cover;
+  width: 100%;
+}
+
+.upload-preview span {
+  background: rgba(24, 32, 47, 0.74);
+  border-radius: 999px;
+  bottom: 10px;
+  color: #ffffff;
+  font-size: 12px;
+  padding: 5px 9px;
+  position: absolute;
+}
+
+.status-panel {
+  background: #f8fafc;
+  border: 1px solid #d8e0ea;
+  border-radius: 8px;
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+}
+
+.status-panel.muted {
+  color: #66758a;
+}
+
+.status-panel div {
+  align-items: center;
+  display: flex;
+  justify-content: space-between;
+}
+
+.status-panel span {
+  color: #66758a;
+  font-size: 12px;
+}
+
+progress {
+  accent-color: #236a5b;
+  height: 10px;
+  width: 100%;
+}
+
+.timeline {
+  background: #dfe7f1;
+  border-top: 1px solid #c9d4e2;
+  display: flex;
+  gap: 10px;
+  min-height: 132px;
+  overflow-x: auto;
+  padding: 14px 20px;
+}
+
+.timeline-empty {
+  align-self: center;
+  color: #5b6879;
+}
+
+.frame-thumb {
+  background: #ffffff;
+  border: 2px solid transparent;
+  border-radius: 8px;
+  color: #172033;
+  flex: 0 0 142px;
+  height: 96px;
+  overflow: hidden;
+  padding: 0;
+  position: relative;
+}
+
+.frame-thumb.selected {
+  border-color: #236a5b;
+}
+
+.frame-thumb img {
+  height: 100%;
+  object-fit: cover;
+  width: 100%;
+}
+
+.frame-thumb span {
+  background: rgba(255, 255, 255, 0.9);
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 800;
+  left: 8px;
+  padding: 3px 7px;
+  position: absolute;
+  top: 8px;
+}
+
+.canvas-panel {
+  aspect-ratio: 16 / 9;
+  display: grid;
+  overflow: hidden;
+  padding: 0;
+  place-items: center;
+  position: relative;
+}
+
+.canvas-backdrop {
+  height: 100%;
+  inset: 0;
+  object-fit: cover;
+  position: absolute;
+  width: 100%;
+}
+
+.canvas-container {
+  position: relative;
+  z-index: 1;
+}
+
+.editor-page {
+  display: grid;
+  gap: 14px;
+}
+
+.toolbar {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.editor-canvas-panel {
+  overflow: auto;
+  padding: 12px;
+}
+
+.playback-panel {
+  aspect-ratio: 16 / 9;
+  display: grid;
+  overflow: hidden;
+  padding: 0;
+  place-items: center;
+}
+
+@media (max-width: 920px) {
+  .app-shell {
+    grid-template-columns: 1fr;
+  }
+
+  .sidebar {
+    padding: 18px;
+  }
+
+  .step-nav,
+  .work-grid,
+  .editor-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .step-nav {
+    display: flex;
+    overflow-x: auto;
+  }
+
+  .step-link {
+    white-space: nowrap;
+  }
+
+  .workspace-inner {
+    padding: 18px;
+  }
 }

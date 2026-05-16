@@ -41,7 +41,7 @@ func Load() (Config, error) {
 		FrontendOrigin:    getEnv("FRONTEND_ORIGIN", "http://localhost:3000"),
 	}
 
-	if cfg.DatabaseURL == "" {
+	if cfg.AppEnv == "production" && cfg.DatabaseURL == "" {
 		return Config{}, fmt.Errorf("DATABASE_URL is required")
 	}
 

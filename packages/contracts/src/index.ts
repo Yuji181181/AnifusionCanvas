@@ -38,6 +38,10 @@ export type GenerateFramesResult = {
   frames: Frame[]
 }
 
+export type GenerateFramesResponse = {
+  job: Job<GenerateFramesResult>
+}
+
 export type InpaintFrameRequest = {
   projectId: string
   frameId: string
@@ -50,11 +54,19 @@ export type InpaintFrameResult = {
   frame: Frame
 }
 
+export type InpaintFrameResponse = {
+  job: Job<InpaintFrameResult>
+}
+
 export type UpdateFrameRequest = {
   projectId: string
   frameId: string
   imageDataUrl: string
   note?: string
+}
+
+export type UpdateFrameResult = {
+  frame: Frame
 }
 
 export type ExportVideoRequest = {
@@ -64,6 +76,18 @@ export type ExportVideoRequest = {
 
 export type ExportVideoResult = {
   videoUrl: string
+}
+
+export type ExportVideoResponse = {
+  job: Job<ExportVideoResult>
+}
+
+export type ListFramesResponse = {
+  frames: Frame[]
+}
+
+export type GetJobResponse<T = unknown> = {
+  job: Job<T>
 }
 
 export type HealthResponse = {
