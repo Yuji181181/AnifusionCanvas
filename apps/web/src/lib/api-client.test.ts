@@ -18,6 +18,25 @@ describe('apiClient', () => {
     vi.unstubAllGlobals()
   })
 
+  it('fetches dependency health checks', async () => {
+    const fetchMock = mockFetch({
+      status: 'degraded',
+      results: [
+        { name: 'database', status: 'skipped', message: 'DATABASE_URL is not set' },
+        { name: 'ffmpeg', status: 'ok', message: 'ffmpeg found at /usr/bin/ffmpeg' },
+      ],
+    })
+
+    await apiClient.healthDependencies()
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      'http://localhost:8080/health/dependencies',
+      expect.objectContaining({
+        headers: expect.objectContaining({ 'content-type': 'application/json' }),
+      }),
+    )
+  })
+
   it('encodes project and frame path parameters when updating a frame', async () => {
     const fetchMock = mockFetch({
       frame: {

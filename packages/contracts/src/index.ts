@@ -95,6 +95,19 @@ export type HealthResponse = {
   status: string
 }
 
+export type DependencyCheckStatus = 'ok' | 'skipped' | 'error'
+
+export type DependencyCheckResult = {
+  name: 'database' | 'replicate' | 'r2' | 'ffmpeg'
+  status: DependencyCheckStatus
+  message: string
+}
+
+export type HealthDependenciesResponse = {
+  status: 'ok' | 'degraded'
+  results: DependencyCheckResult[]
+}
+
 export type ApiErrorResponse = {
   error: {
     code: string

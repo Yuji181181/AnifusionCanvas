@@ -5,6 +5,8 @@ import type {
   GenerateFramesRequest,
   GenerateFramesResponse,
   GetJobResponse,
+  HealthDependenciesResponse,
+  HealthResponse,
   InpaintFrameRequest,
   InpaintFrameResponse,
   ListFramesResponse,
@@ -52,6 +54,12 @@ function pathParam(value: string): string {
 }
 
 export const apiClient = {
+  health() {
+    return request<HealthResponse>('/health')
+  },
+  healthDependencies() {
+    return request<HealthDependenciesResponse>('/health/dependencies')
+  },
   listFrames(projectId: string) {
     return request<ListFramesResponse>(`/projects/${pathParam(projectId)}/frames`)
   },

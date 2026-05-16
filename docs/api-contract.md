@@ -21,6 +21,7 @@ GoのJSON tagとTypeScript contractのプロパティ名を一致させる。片
 | Frame kind | `domain.FrameKind` | `FrameKind` |
 | Job | `domain.Job` | `Job<T>` |
 | Job status | `domain.JobStatus` | `JobStatus` |
+| Dependency check result | `dependency.CheckResult` | `DependencyCheckResult` |
 | API error | `handler.ErrorBody` | `ApiErrorResponse` |
 
 ### Frame
@@ -50,6 +51,14 @@ GoのJSON tagとTypeScript contractのプロパティ名を一致させる。片
 | `error` | string, optional | Failure detail |
 | `createdAt` | string | RFC3339 timestamp |
 | `updatedAt` | string | RFC3339 timestamp |
+
+### Dependency Check Result
+
+| JSON field | Type | Notes |
+| --- | --- | --- |
+| `name` | `database` / `replicate` / `r2` / `ffmpeg` | Checked dependency |
+| `status` | `ok` / `skipped` / `error` | `skipped` means the dependency is not configured in the current environment |
+| `message` | string | Human-readable check detail |
 
 ## Error Response
 
@@ -82,7 +91,23 @@ type HealthResponse = {
 
 ### `GET /health/dependencies`
 
-Checks database, Replicate, R2, and FFmpeg availability. The response is intentionally handled by the API layer and is not yet represented in `packages/contracts`.
+Checks database, Replicate, R2, and FFmpeg availability.
+
+Response:
+
+```ts
+type HealthDependenciesResponse = {
+  status: 'ok' | 'degraded'
+  results: DependencyCheckResult[]
+}
+```
+
+Behavior:
+
+- `status` is `ok` when no dependency check has `status: 'error'`.
+- `status` is `degraded` when at least one dependency check has `status: 'error'`.
+- Missing optional local-development configuration returns a dependency result with `status: 'skipped'`.
+- Production readiness expects `database`, `replicate`, `r2`, and `ffmpeg` to all return `status: 'ok'`.
 
 ### `GET /projects/:projectId/frames`
 
