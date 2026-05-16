@@ -2,8 +2,8 @@ import type { ExportVideoResult } from '@anifusion/contracts'
 import type { ExportFormValues } from '@/lib/form-schemas'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useMutation, useQuery } from '@tanstack/react-query'
-import { AlertTriangle, Download, Film } from 'lucide-react'
-import { useEffect, useMemo, useState } from 'react'
+import { AlertTriangle, Download, Film, Play, RotateCcw } from 'lucide-react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { JobStatusPanel } from '@/components/shared/job-status'
 import { apiClient } from '@/lib/api-client'
@@ -31,6 +31,8 @@ export function ExportPanel() {
 
   const fps = watch('fps')
   const [previewIndex, setPreviewIndex] = useState(0)
+  const [videoPlaying, setVideoPlaying] = useState(false)
+  const videoRef = useRef<HTMLVideoElement | null>(null)
 
   useEffect(() => {
     if (frames.length === 0) {
@@ -66,12 +68,21 @@ export function ExportPanel() {
     if (exportJob?.status === 'succeeded' && exportJob.result?.videoUrl) {
       return exportJob.result.videoUrl
     }
-
     return undefined
   }, [exportJob])
 
   function runExport(values: ExportFormValues) {
     mutation.mutate({ projectId: values.projectId, fps: values.fps })
+  }
+
+  function handleReExport() {
+    setActiveJob(undefined)
+    videoRef.current?.pause()
+  }
+
+  function handlePlayVideo() {
+    videoRef.current?.play()
+    setVideoPlaying(true)
   }
 
   const isExporting = mutation.isPending || Boolean(exportJob && exportJob.status !== 'succeeded' && exportJob.status !== 'failed')
@@ -92,25 +103,54 @@ export function ExportPanel() {
               <span className="field-error"><AlertTriangle aria-hidden="true" size={14} /> {errors.fps.message}</span>
             )}
           </label>
-          <button
-            className="command-button"
-            disabled={frames.length === 0 || isExporting}
-            type="submit"
-          >
-            <Film aria-hidden="true" />
-            MP4を書き出す
-          </button>
+          {videoUrl ? (
+            <div className="export-actions">
+              <a className="command-button" download href={videoUrl}>
+                <Download aria-hidden="true" />
+                MP4をダウンロード
+              </a>
+              <button className="icon-button" onClick={handleReExport} type="button">
+                <RotateCcw aria-hidden="true" />
+                再書き出し
+              </button>
+            </div>
+          ) : (
+            <button
+              className="command-button"
+              disabled={frames.length === 0 || isExporting}
+              type="submit"
+            >
+              <Film aria-hidden="true" />
+              MP4を書き出す
+            </button>
+          )}
         </form>
         <JobStatusPanel job={exportJob} />
-        {videoUrl ? (
-          <a className="download-link" href={videoUrl}>
-            <Download aria-hidden="true" />
-            書き出し結果を開く
-          </a>
-        ) : null}
       </div>
       <div className="panel playback-panel">
-        {frames[previewIndex] ? <img src={frames[previewIndex].imageUrl} alt="プレビュー" /> : <div>フレームがありません</div>}
+        {videoUrl ? (
+          <>
+            <video
+              ref={videoRef}
+              controls
+              onPause={() => setVideoPlaying(false)}
+              onPlay={() => setVideoPlaying(true)}
+              src={videoUrl}
+              style={{ height: '100%', width: '100%' }}
+            />
+            {!videoPlaying && (
+              <button className="play-overlay" onClick={handlePlayVideo} type="button">
+                <Play aria-hidden="true" size={48} />
+              </button>
+            )}
+          </>
+        ) : (
+          frames[previewIndex] ? (
+            <img src={frames[previewIndex].imageUrl} alt="プレビュー" />
+          ) : (
+            <div>フレームがありません</div>
+          )
+        )}
       </div>
     </section>
   )
