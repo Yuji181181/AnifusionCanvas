@@ -87,6 +87,71 @@ func TestStudioUpdateRouteReturnsNotFoundForMissingFrame(t *testing.T) {
 	}
 }
 
+func TestStudioRoutesRejectInvalidRequests(t *testing.T) {
+	e := newTestEcho()
+
+	tests := []struct {
+		name   string
+		method string
+		path   string
+		body   map[string]any
+	}{
+		{
+			name:   "generate missing project",
+			method: http.MethodPost,
+			path:   "/inference/generate",
+			body: map[string]any{
+				"prompt":     "turn around",
+				"frameCount": 2,
+			},
+		},
+		{
+			name:   "generate missing prompt",
+			method: http.MethodPost,
+			path:   "/inference/generate",
+			body: map[string]any{
+				"projectId":  "project-1",
+				"frameCount": 2,
+			},
+		},
+		{
+			name:   "inpaint missing mask",
+			method: http.MethodPost,
+			path:   "/inference/inpaint",
+			body: map[string]any{
+				"projectId": "project-1",
+				"frameId":   "frame-1",
+				"prompt":    "fix hand",
+				"strength":  0.7,
+			},
+		},
+		{
+			name:   "update missing image",
+			method: http.MethodPut,
+			path:   "/projects/project-1/frames/frame-1",
+			body:   map[string]any{},
+		},
+		{
+			name:   "export invalid fps",
+			method: http.MethodPost,
+			path:   "/export/video",
+			body: map[string]any{
+				"projectId": "project-1",
+				"fps":       0,
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			res := performJSON(t, e, tt.method, tt.path, tt.body)
+			if res.Code != http.StatusBadRequest {
+				t.Fatalf("expected status %d, got %d: %s", http.StatusBadRequest, res.Code, res.Body.String())
+			}
+		})
+	}
+}
+
 func newTestEcho() *echo.Echo {
 	e := echo.New()
 	service := usecase.NewStudioService()
