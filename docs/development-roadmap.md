@@ -119,7 +119,7 @@
 - [x] Frame の削除、並び替え、kind / note 更新 API を追加する
 - [x] Job の type 別 result schema を Go / TypeScript 双方で厳密化する
 - [x] `packages/contracts` に `/health/dependencies`、Project、storage object、export artifact の型を追加する
-- [ ] API request / response の Zod schema を web 側で利用できる形に整理する
+- [x] API request / response の Zod schema を web 側で利用できる形に整理する
 - [ ] DB migration に projects / frames / jobs の不足メタデータを追加する
 - [ ] migration の down 手順とバックアップ注意点を更新する
 - [ ] API contract の変更ルールに従い、Go domain、handler、TypeScript contracts、web client、tests を同一 PR で更新する
