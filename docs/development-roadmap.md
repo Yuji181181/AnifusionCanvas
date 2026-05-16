@@ -144,8 +144,8 @@
 - [x] 例: `projects/{projectId}/inputs/`、`projects/{projectId}/frames/`、`projects/{projectId}/masks/`、`projects/{projectId}/exports/`
 - [x] public URL または signed URL の採用方針を決める
 - [x] `R2_PUBLIC_BASE_URL` 未設定時の取得方法を決める
-- [ ] frame の `imageUrl` / `thumbnailUrl` を R2 URL として保存する
-- [ ] 手動編集保存時も data URL ではなく R2 object として保存する
+- [x] frame の `imageUrl` / `thumbnailUrl` を R2 URL として保存する
+- [x] 手動編集保存時も data URL ではなく R2 object として保存する
 - [x] R2 upload / download / delete の単体テストを追加する
 - [ ] R2 失敗時の user-facing error を整備する
 

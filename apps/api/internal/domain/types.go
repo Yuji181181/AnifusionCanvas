@@ -44,6 +44,13 @@ type Project struct {
 	UpdatedAt string `json:"updatedAt"`
 }
 
+type StorageObject struct {
+	Key         string `json:"key"`
+	URL         string `json:"url"`
+	ContentType string `json:"contentType"`
+	Size        int64  `json:"size"`
+}
+
 type Job struct {
 	ID        string    `json:"id"`
 	ProjectID string    `json:"projectId,omitempty"`

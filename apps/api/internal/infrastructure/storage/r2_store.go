@@ -15,6 +15,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/haseg/anifusion-canvas/apps/api/internal/config"
+	"github.com/haseg/anifusion-canvas/apps/api/internal/domain"
 )
 
 type s3Client interface {
@@ -29,12 +30,7 @@ type R2Store struct {
 	publicBaseURL string
 }
 
-type StoredObject struct {
-	Key         string `json:"key"`
-	URL         string `json:"url"`
-	ContentType string `json:"contentType"`
-	Size        int64  `json:"size"`
-}
+type StoredObject = domain.StorageObject
 
 func NewR2Store(ctx context.Context, cfg config.Config) (*R2Store, error) {
 	if strings.TrimSpace(cfg.R2Bucket) == "" {

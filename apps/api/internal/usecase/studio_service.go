@@ -1,9 +1,11 @@
 package usecase
 
 import (
+	"context"
 	"encoding/base64"
 	"fmt"
 	"math"
+	"strings"
 	"time"
 
 	"github.com/haseg/anifusion-canvas/apps/api/internal/domain"
@@ -25,8 +27,13 @@ type StudioStore interface {
 	GetJob(jobID string) (domain.Job, bool, error)
 }
 
+type ObjectStore interface {
+	PutDataURL(ctx context.Context, key string, dataURL string) (domain.StorageObject, error)
+}
+
 type StudioService struct {
-	store StudioStore
+	store       StudioStore
+	objectStore ObjectStore
 }
 
 func NewStudioService() *StudioService {
@@ -35,6 +42,10 @@ func NewStudioService() *StudioService {
 
 func NewStudioServiceWithStore(store StudioStore) *StudioService {
 	return &StudioService{store: store}
+}
+
+func NewStudioServiceWithStoreAndObjects(store StudioStore, objectStore ObjectStore) *StudioService {
+	return &StudioService{store: store, objectStore: objectStore}
 }
 
 func (s *StudioService) CreateProject(input domain.CreateProjectRequest) (domain.Project, error) {
@@ -133,7 +144,7 @@ func (s *StudioService) InpaintFrame(input domain.InpaintFrameRequest) domain.Jo
 	return job
 }
 
-func (s *StudioService) UpdateFrame(input domain.UpdateFrameRequest) (domain.Frame, error) {
+func (s *StudioService) UpdateFrame(ctx context.Context, input domain.UpdateFrameRequest) (domain.Frame, error) {
 	frame, ok, err := s.store.FindFrame(input.ProjectID, input.FrameID)
 	if err != nil {
 		return domain.Frame{}, err
@@ -143,8 +154,16 @@ func (s *StudioService) UpdateFrame(input domain.UpdateFrameRequest) (domain.Fra
 	}
 
 	frame.Kind = domain.FrameKindEdited
-	frame.ImageURL = input.ImageDataURL
-	frame.ThumbnailURL = input.ImageDataURL
+	imageURL := input.ImageDataURL
+	if s.objectStore != nil {
+		object, err := s.objectStore.PutDataURL(ctx, editedFrameObjectKey(input.ProjectID, input.FrameID, input.ImageDataURL), input.ImageDataURL)
+		if err != nil {
+			return domain.Frame{}, err
+		}
+		imageURL = object.URL
+	}
+	frame.ImageURL = imageURL
+	frame.ThumbnailURL = imageURL
 	frame.Note = input.Note
 	frame.UpdatedAt = now()
 	if err := s.store.UpsertFrame(frame); err != nil {
@@ -152,6 +171,20 @@ func (s *StudioService) UpdateFrame(input domain.UpdateFrameRequest) (domain.Fra
 	}
 
 	return frame, nil
+}
+
+func editedFrameObjectKey(projectID string, frameID string, dataURL string) string {
+	extension := ".bin"
+	if strings.HasPrefix(dataURL, "data:image/png") {
+		extension = ".png"
+	}
+	if strings.HasPrefix(dataURL, "data:image/jpeg") || strings.HasPrefix(dataURL, "data:image/jpg") {
+		extension = ".jpg"
+	}
+	if strings.HasPrefix(dataURL, "data:image/webp") {
+		extension = ".webp"
+	}
+	return fmt.Sprintf("projects/%s/frames/%s%s", projectID, frameID, extension)
 }
 
 func (s *StudioService) UpdateFrameMetadata(input domain.UpdateFrameMetadataRequest) (domain.Frame, bool, error) {
