@@ -138,15 +138,15 @@
 
 ### Phase 2: R2 ストレージ実装
 
-- [ ] R2 client を `apps/api/internal/infrastructure/storage` に追加する
-- [ ] data URL 画像を decode して R2 にアップロードする処理を追加する
-- [ ] R2 object key 設計を決める
-- [ ] 例: `projects/{projectId}/inputs/`、`projects/{projectId}/frames/`、`projects/{projectId}/masks/`、`projects/{projectId}/exports/`
-- [ ] public URL または signed URL の採用方針を決める
-- [ ] `R2_PUBLIC_BASE_URL` 未設定時の取得方法を決める
+- [x] R2 client を `apps/api/internal/infrastructure/storage` に追加する
+- [x] data URL 画像を decode して R2 にアップロードする処理を追加する
+- [x] R2 object key 設計を決める
+- [x] 例: `projects/{projectId}/inputs/`、`projects/{projectId}/frames/`、`projects/{projectId}/masks/`、`projects/{projectId}/exports/`
+- [x] public URL または signed URL の採用方針を決める
+- [x] `R2_PUBLIC_BASE_URL` 未設定時の取得方法を決める
 - [ ] frame の `imageUrl` / `thumbnailUrl` を R2 URL として保存する
 - [ ] 手動編集保存時も data URL ではなく R2 object として保存する
-- [ ] R2 upload / download / delete の単体テストを追加する
+- [x] R2 upload / download / delete の単体テストを追加する
 - [ ] R2 失敗時の user-facing error を整備する
 
 受け入れ基準:

@@ -22,6 +22,13 @@ export type Project = {
   updatedAt: string
 }
 
+export type StorageObject = {
+  key: string
+  url: string
+  contentType: string
+  size: number
+}
+
 export type Job<T = unknown> = {
   id: string
   projectId?: string
