@@ -7,10 +7,11 @@ import (
 	"github.com/labstack/echo/v4"
 )
 
-func Register(e *echo.Echo, studio *handler.StudioHandler) {
+func Register(e *echo.Echo, studio *handler.StudioHandler, health *handler.HealthHandler) {
 	e.GET("/health", func(c echo.Context) error {
 		return c.JSON(http.StatusOK, map[string]string{"status": "ok"})
 	})
+	e.GET("/health/dependencies", health.Readiness)
 
 	e.GET("/projects/:projectId/frames", studio.ListFrames)
 	e.PUT("/projects/:projectId/frames/:frameId", studio.UpdateFrame)
