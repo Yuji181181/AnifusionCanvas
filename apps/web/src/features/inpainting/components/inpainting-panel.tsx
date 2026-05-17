@@ -2,11 +2,12 @@ import type { InpaintFrameResult } from '@anifusion/contracts'
 import { inpaintingFormSchema, type InpaintingFormValues } from '@/lib/form-schemas'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useMutation, useQuery } from '@tanstack/react-query'
-import { AlertTriangle, Eraser, Eye, EyeOff, Images, RotateCcw, Undo, Wand2, X } from 'lucide-react'
+import { AlertTriangle, Eraser, Eye, EyeOff, Images, Undo, Wand2 } from 'lucide-react'
 import { Canvas, PencilBrush } from 'fabric'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { JobStatusPanel } from '@/components/shared/job-status'
+import { readableError, RecoveryPanel } from '@/components/shared/recovery-panel'
 import { apiClient } from '@/lib/api-client'
 import { queryClient } from '@/lib/query-client'
 import { useFrameStore, useSelectedFrame } from '@/stores/frame-store'
@@ -282,36 +283,14 @@ export function InpaintingPanel() {
             </button>
           </div>
         </form>
-        {failureMessage && (
-          <div className="recovery-panel" role="alert">
-            <div>
-              <AlertTriangle aria-hidden="true" size={16} />
-              <strong>修正を完了できませんでした</strong>
-            </div>
-            <p>{failureMessage}</p>
-            <div className="button-row">
-              <button className="command-button compact" disabled={!frame || isRunning} form="inpainting-form" type="submit">
-                <RotateCcw aria-hidden="true" />
-                再試行
-              </button>
-              <button className="icon-button" onClick={clearFailure} title="失敗表示を閉じる" type="button">
-                <X aria-hidden="true" />
-              </button>
-            </div>
-          </div>
-        )}
+        <RecoveryPanel
+          formId="inpainting-form"
+          message={failureMessage}
+          onDismiss={clearFailure}
+          title="修正を完了できませんでした"
+        />
         <JobStatusPanel job={inpaintJob} />
       </div>
     </section>
   )
-}
-
-function readableError(error: unknown): string | undefined {
-  if (!error) {
-    return undefined
-  }
-  if (error instanceof Error) {
-    return error.message
-  }
-  return String(error)
 }
