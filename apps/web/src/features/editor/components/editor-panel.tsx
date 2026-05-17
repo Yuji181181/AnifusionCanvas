@@ -1,6 +1,6 @@
 import { useMutation } from '@tanstack/react-query'
-import { Circle, MousePointer2, PenLine, Redo, Save, SlidersHorizontal, Square, Sun, Trash2, Type, Undo } from 'lucide-react'
-import { Canvas, Circle as FabricCircle, PencilBrush, Rect, Textbox, filters } from 'fabric'
+import { Circle, Copy, Layers, MousePointer2, MoveDown, MoveUp, PenLine, Redo, Save, SlidersHorizontal, Square, Sun, Trash2, Type, Undo } from 'lucide-react'
+import { Canvas, Circle as FabricCircle, PencilBrush, Rect, Textbox, filters, type FabricObject } from 'fabric'
 import { useCallback, useEffect, useRef } from 'react'
 import { apiClient } from '@/lib/api-client'
 import { queryClient } from '@/lib/query-client'
@@ -131,6 +131,83 @@ export function EditorPanel() {
     }
   }
 
+  function selectedEditableObject(): FabricObject | undefined {
+    const active = fabricRef.current?.getActiveObject()
+    if (!active || active === frameImageRef.current) {
+      return undefined
+    }
+    return active
+  }
+
+  function keepAboveFrameImage(object: FabricObject) {
+    const canvas = fabricRef.current
+    const frameImage = frameImageRef.current
+    if (!canvas || !frameImage) {
+      return
+    }
+
+    const frameIndex = canvas.getObjects().indexOf(frameImage)
+    const objectIndex = canvas.getObjects().indexOf(object)
+    if (objectIndex <= frameIndex) {
+      canvas.moveObjectTo(object, frameIndex + 1)
+    }
+  }
+
+  async function duplicateSelected() {
+    const canvas = fabricRef.current
+    const active = selectedEditableObject()
+    if (!canvas || !active) {
+      return
+    }
+
+    const clone = await active.clone()
+    clone.set({
+      left: (active.left ?? 0) + 24,
+      top: (active.top ?? 0) + 24,
+    })
+    canvas.add(clone)
+    canvas.setActiveObject(clone)
+    canvas.renderAll()
+    undoManagerRef.current?.save()
+  }
+
+  function bringSelectedForward() {
+    const canvas = fabricRef.current
+    const active = selectedEditableObject()
+    if (!canvas || !active) {
+      return
+    }
+
+    canvas.bringObjectForward(active)
+    canvas.renderAll()
+    undoManagerRef.current?.save()
+  }
+
+  function sendSelectedBackward() {
+    const canvas = fabricRef.current
+    const active = selectedEditableObject()
+    if (!canvas || !active) {
+      return
+    }
+
+    canvas.sendObjectBackwards(active)
+    keepAboveFrameImage(active)
+    canvas.renderAll()
+    undoManagerRef.current?.save()
+  }
+
+  function bringSelectedToFront() {
+    const canvas = fabricRef.current
+    const active = selectedEditableObject()
+    if (!canvas || !active) {
+      return
+    }
+
+    canvas.bringObjectToFront(active)
+    canvas.renderAll()
+    undoManagerRef.current?.save()
+  }
+
   function handleUndo() {
     undoManagerRef.current?.undo()
   }
@@ -213,6 +290,18 @@ export function EditorPanel() {
         </button>
         <button className="icon-button" onClick={deleteSelected} title="選択オブジェクトを削除" type="button">
           <Trash2 aria-hidden="true" />
+        </button>
+        <button className="icon-button" onClick={duplicateSelected} title="選択オブジェクトを複製" type="button">
+          <Copy aria-hidden="true" />
+        </button>
+        <button className="icon-button" onClick={sendSelectedBackward} title="選択オブジェクトを背面へ" type="button">
+          <MoveDown aria-hidden="true" />
+        </button>
+        <button className="icon-button" onClick={bringSelectedForward} title="選択オブジェクトを前面へ" type="button">
+          <MoveUp aria-hidden="true" />
+        </button>
+        <button className="icon-button" onClick={bringSelectedToFront} title="選択オブジェクトを最前面へ" type="button">
+          <Layers aria-hidden="true" />
         </button>
         <input aria-label="色" onChange={(event) => setColor(event.target.value)} type="color" value={color} />
         <input
