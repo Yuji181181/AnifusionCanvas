@@ -60,6 +60,16 @@ func TestParseToonCrafterOutput(t *testing.T) {
 	}
 }
 
+func TestParseToonCrafterOutputList(t *testing.T) {
+	prediction := &Prediction{Output: []any{
+		"https://replicate.delivery/test/ToonCrafter_00001.mp4",
+	}}
+	url := ParseToonCrafterOutput(prediction)
+	if url != "https://replicate.delivery/test/ToonCrafter_00001.mp4" {
+		t.Fatalf("unexpected output URL: %q", url)
+	}
+}
+
 func TestParseToonCrafterOutputNonString(t *testing.T) {
 	prediction := &Prediction{Output: 42}
 	url := ParseToonCrafterOutput(prediction)

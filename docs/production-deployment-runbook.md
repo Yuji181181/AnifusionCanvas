@@ -38,6 +38,8 @@ Google Secret Manager に次の secret を作成します。secret 名は deploy
 | `REPLICATE_TOONCRAFTER_VERSION` | `0486ff07368e816ec3d5c69b9581e7a09b55817f567a0d74caad9395c9295c77` |
 | `REPLICATE_SDXL_INPAINTING_VERSION` | `a5b13068cc81a89a4fbeefeccc774869fcb34df4dbc92c1555e0f2771d49dde7` |
 
+ToonCrafter の成功 output は MP4 URL の配列で返る。
+
 作成例:
 
 ```bash

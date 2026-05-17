@@ -29,5 +29,9 @@ func BuildToonCrafterInput(req domain.GenerateFramesRequest) map[string]any {
 // ParseToonCrafterOutput extracts the MP4 video URL from a completed
 // ToonCrafter prediction.
 func ParseToonCrafterOutput(prediction *Prediction) string {
+	urls := prediction.OutputURLList()
+	if len(urls) > 0 {
+		return urls[0]
+	}
 	return prediction.OutputURL()
 }
