@@ -542,6 +542,28 @@ progress {
   margin-top: 4px;
 }
 
+.recovery-panel {
+  background: #fff7ed;
+  border: 1px solid #fdba74;
+  border-radius: 8px;
+  color: #7c2d12;
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+}
+
+.recovery-panel > div:first-child {
+  align-items: center;
+  display: flex;
+  gap: 6px;
+}
+
+.recovery-panel p {
+  font-size: 13px;
+  line-height: 1.55;
+  margin: 0;
+}
+
 .toolbar-label {
   align-items: center;
   display: flex;

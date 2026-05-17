@@ -2,7 +2,7 @@ import type { InpaintFrameResult } from '@anifusion/contracts'
 import { inpaintingFormSchema, type InpaintingFormValues } from '@/lib/form-schemas'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useMutation, useQuery } from '@tanstack/react-query'
-import { AlertTriangle, Eraser, Eye, EyeOff, Images, Undo, Wand2 } from 'lucide-react'
+import { AlertTriangle, Eraser, Eye, EyeOff, Images, RotateCcw, Undo, Wand2, X } from 'lucide-react'
 import { Canvas, PencilBrush } from 'fabric'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useForm } from 'react-hook-form'
@@ -26,6 +26,7 @@ export function InpaintingPanel() {
   const historyIndexRef = useRef(-1)
   const [brushSize, setBrushSize] = useState(24)
   const [isMaskVisible, setIsMaskVisible] = useState(true)
+  const inpaintJob = activeJob?.type === 'inpainting' ? activeJob : undefined
 
   const {
     register,
@@ -173,7 +174,16 @@ export function InpaintingPanel() {
     })
   }
 
-  const isRunning = mutation.isPending || Boolean(activeJob?.type === 'inpainting' && activeJob?.status !== 'succeeded' && activeJob?.status !== 'failed')
+  function clearFailure() {
+    mutation.reset()
+    if (inpaintJob?.status === 'failed') {
+      setActiveJob(undefined)
+    }
+  }
+
+  const isRunning = mutation.isPending || Boolean(inpaintJob && inpaintJob.status !== 'succeeded' && inpaintJob.status !== 'failed')
+  const failureMessage = readableError(mutation.error)
+    ?? (inpaintJob?.status === 'failed' ? inpaintJob.error || inpaintJob.message : undefined)
 
   return (
     <section className="work-grid editor-grid">
@@ -211,7 +221,7 @@ export function InpaintingPanel() {
             <p className="target-frame-empty">Step 1でフレームを生成すると選択できます</p>
           )}
         </div>
-        <form onSubmit={handleSubmit(runInpaint)}>
+        <form id="inpainting-form" onSubmit={handleSubmit(runInpaint)}>
           <input type="hidden" {...register('maskDataUrl')} />
           <label>
             修正プロンプト
@@ -272,8 +282,36 @@ export function InpaintingPanel() {
             </button>
           </div>
         </form>
-        <JobStatusPanel job={activeJob?.type === 'inpainting' ? activeJob : undefined} />
+        {failureMessage && (
+          <div className="recovery-panel" role="alert">
+            <div>
+              <AlertTriangle aria-hidden="true" size={16} />
+              <strong>修正を完了できませんでした</strong>
+            </div>
+            <p>{failureMessage}</p>
+            <div className="button-row">
+              <button className="command-button compact" disabled={!frame || isRunning} form="inpainting-form" type="submit">
+                <RotateCcw aria-hidden="true" />
+                再試行
+              </button>
+              <button className="icon-button" onClick={clearFailure} title="失敗表示を閉じる" type="button">
+                <X aria-hidden="true" />
+              </button>
+            </div>
+          </div>
+        )}
+        <JobStatusPanel job={inpaintJob} />
       </div>
     </section>
   )
+}
+
+function readableError(error: unknown): string | undefined {
+  if (!error) {
+    return undefined
+  }
+  if (error instanceof Error) {
+    return error.message
+  }
+  return String(error)
 }
