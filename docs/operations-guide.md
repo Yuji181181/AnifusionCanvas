@@ -239,16 +239,16 @@ curl http://localhost:8080/health/dependencies
 
 実推論を実行したら、以下を埋める。
 
-- [ ] 実行日:
-- [ ] 本番 URL: `https://anifusion-canvas.pages.dev`
-- [ ] API URL: `https://anifusion-api-976317870900.asia-northeast1.run.app`
-- [ ] `/health` が `ok`
-- [ ] `/health/dependencies` が `ok`
-- [ ] AI中割りを 1 回実行し、タイムラインにフレームが表示された
-- [ ] Inpainting を 1 回実行し、対象フレームが修正済みとして反映された
-- [ ] Replicate 使用量を確認した
-- [ ] 失敗した場合のエラー文:
-- [ ] 対応メモ:
+- [x] 実行日: 2026-05-18 03:24 JST
+- [x] 本番 URL: `https://anifusion-canvas.pages.dev`
+- [x] API URL: `https://anifusion-api-976317870900.asia-northeast1.run.app`
+- [x] `/health` が `ok`
+- [x] `/health/dependencies` が `ok`
+- [x] AI中割りを 1 回実行し、タイムラインにフレームが表示された
+- [x] Inpainting を 1 回実行し、対象フレームが修正済みとして反映された
+- [x] Replicate 実行回数を記録した: 推論は最小構成で AI中割り 1 回、Inpainting 1 回のみ実行
+- [x] 失敗した場合のエラー文: なし
+- [x] 対応メモ: `projectId=smoke-20260518032238`、AI中割り job `job-1779042160537991633`、Inpainting job `job-1779042237128981349`。生成結果は 4 frame、Inpainting 後に `frame-1-1779042213584710121-gen` が `inpainted` になった。R2 公開画像 URL は HTTP 200 を確認済み。
 
 ## 7. API 動作確認
 
