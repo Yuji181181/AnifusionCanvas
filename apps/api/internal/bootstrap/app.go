@@ -31,6 +31,7 @@ func NewApp() (*App, error) {
 	e.HTTPErrorHandler = handler.JSONErrorHandler
 	e.Use(middleware.Logger())
 	e.Use(middleware.Recover())
+	e.Use(middleware.BodyLimit("20M"))
 	e.Use(middleware.CORSWithConfig(middleware.CORSConfig{
 		AllowOrigins: []string{cfg.FrontendOrigin},
 		AllowMethods: []string{http.MethodGet, http.MethodPost, http.MethodPut, http.MethodDelete, http.MethodOptions},

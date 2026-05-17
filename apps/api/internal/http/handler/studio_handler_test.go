@@ -115,6 +115,29 @@ func TestStudioHandlerRejectsNonDataURL(t *testing.T) {
 	}
 }
 
+func TestStudioHandlerRejectsOversizedDataURL(t *testing.T) {
+	e := echo.New()
+	h := NewStudioHandler(usecase.NewStudioService())
+
+	req := httptest.NewRequest(http.MethodPut, "/projects/p-1/frames/f-1", strings.NewReader(`{
+		"imageDataUrl": "`+"data:image/png;base64,"+strings.Repeat("a", 8*1024*1024)+`"
+	}`))
+	req.Header.Set("Content-Type", "application/json")
+	rec := httptest.NewRecorder()
+	c := e.NewContext(req, rec)
+	c.SetParamNames("projectId", "frameId")
+	c.SetParamValues("p-1", "f-1")
+
+	err := h.UpdateFrame(c)
+	if err == nil {
+		t.Fatalf("expected validation error for oversized data URL")
+	}
+	httpErr, ok := err.(*echo.HTTPError)
+	if !ok || httpErr.Code != http.StatusBadRequest {
+		t.Fatalf("expected bad request, got %v", err)
+	}
+}
+
 func TestStudioHandlerUpdateFrameNotFound(t *testing.T) {
 	e := echo.New()
 	h := NewStudioHandler(usecase.NewStudioService())

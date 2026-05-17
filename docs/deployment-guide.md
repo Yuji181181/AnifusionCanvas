@@ -7,7 +7,7 @@
 - フロントエンド: Cloudflare Pages
 - バックエンド: Google Cloud Run
 - コンテナイメージ: Artifact Registry
-- 環境変数管理: Cloud Run の環境変数、または必要に応じて Secret Manager
+- 環境変数管理: Secret Manager を優先し、手動確認用に Cloud Run env file も残す
 
 ---
 
@@ -95,8 +95,8 @@ API が本番で利用する認証情報や接続先を設定する。
 - `DATABASE_URL` は **Go MySQL ドライバ互換のDSN** を使う
 - `STUDIO_STORE` は DB-backed store を使う場合 `database` にする
 - `R2_PUBLIC_BASE_URL` は任意。未設定の場合は空文字で動作する
-- 機密情報は将来的には Secret Manager に寄せたほうがよい
-- 最初は env file 運用で問題ない
+- 機密情報は Secret Manager に寄せる
+- 手元の env file は手動デプロイや設定確認の補助としてだけ扱う
 
 ---
 
@@ -197,6 +197,18 @@ GitHub Actions から Secret Manager 経由でデプロイする場合は、`Dep
 `R2_PUBLIC_BASE_URL` は任意項目のため、Secret Manager 版デプロイでは必須 secret として参照しない。
 過去に `R2_PUBLIC_BASE_URL` を Secret として Cloud Run に設定していた場合でも、`deploy-secret-manager.sh` が既存の secret binding を削除してから空文字の環境変数として設定する。
 
+Cloud Run のリソース設定は deploy script の既定値で次を指定する。
+
+| 設定 | 既定値 |
+| --- | --- |
+| CPU | `2` |
+| Memory | `2Gi` |
+| Timeout | `900s` |
+| Concurrency | `4` |
+| CPU throttling | disabled |
+
+詳細な Secret Manager、権限、R2、smoke test、rollback 手順は `docs/production-deployment-runbook.md` を参照する。
+
 ### デプロイ後に確認すること
 
 ```bash
@@ -231,6 +243,7 @@ https://anifusion-api-xxxxx-an.a.run.app
 - Cloud Run の `FRONTEND_ORIGIN` が Pages のURLになっている
 - Pages の `VITE_API_BASE_URL` が Cloud Run URL になっている
 - `R2_PUBLIC_BASE_URL` を使う場合は公開URLが正しい
+- Cloud Run revision が CPU `2`、memory `2Gi`、timeout `900s`、concurrency `4`、CPU throttling disabled で作成されている
 - API の `/health` が通る
 - API の `/health/dependencies` が `ok` を返す
 - フロントから API への CORS エラーが出ない

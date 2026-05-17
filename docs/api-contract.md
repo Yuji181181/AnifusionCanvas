@@ -279,6 +279,7 @@ Validation:
 - `frameId` is required.
 - `imageDataUrl` is required.
 - `imageDataUrl` must start with `data:`.
+- `imageDataUrl` must be 8 MiB or less.
 
 ### `PUT /projects/:projectId/frames/:frameId/metadata`
 
@@ -392,9 +393,12 @@ Validation:
 
 - `projectId` is required.
 - `prompt` is required.
+- `prompt` must be 500 characters or less.
+- `negativePrompt` must be 500 characters or less when present.
 - `frameCount` must be between 2 and 12.
 - `startImageDataUrl` must start with `data:`.
 - `endImageDataUrl` must start with `data:`.
+- `startImageDataUrl` and `endImageDataUrl` must be 8 MiB or less each.
 
 ### `POST /inference/inpaint`
 
@@ -423,8 +427,10 @@ Validation:
 - `projectId` is required.
 - `frameId` is required.
 - `prompt` is required.
+- `prompt` must be 500 characters or less.
 - `maskDataUrl` is required.
 - `maskDataUrl` must start with `data:`.
+- `maskDataUrl` must be 8 MiB or less.
 - `strength` must be between 0.1 and 1.
 
 ### `POST /export/video`
@@ -460,7 +466,7 @@ Validation:
 
 - `projectId` is required.
 - `fps` must be greater than 0.
-- `fps` must be 60 or less.
+- `fps` must be 24 or less.
 
 ### `GET /jobs/:jobId`
 

@@ -10,7 +10,7 @@ spec:
         autoscaling.knative.dev/maxScale: '3'
         run.googleapis.com/cpu-throttling: 'false'
     spec:
-      containerConcurrency: 10
+      containerConcurrency: 4
       timeoutSeconds: 900
       containers:
         - image: REGION-docker.pkg.dev/PROJECT_ID/REPOSITORY/anifusion-api:latest
@@ -45,5 +45,5 @@ spec:
               value: database
           resources:
             limits:
-              cpu: '1'
-              memory: 1Gi
+              cpu: '2'
+              memory: 2Gi
