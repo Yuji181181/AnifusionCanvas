@@ -268,6 +268,38 @@ func TestMemoryStoreUpdateJobVersionConflict(t *testing.T) {
 	}
 }
 
+func TestMemoryStoreListActiveJobs(t *testing.T) {
+	store := NewMemoryStudioStore()
+	jobs := []domain.Job{
+		{ID: "j-queued", ProjectID: "p-1", Type: domain.JobTypeGeneration, Status: domain.JobStatusQueued, Version: 1},
+		{ID: "j-running", ProjectID: "p-1", Type: domain.JobTypeGeneration, Status: domain.JobStatusRunning, Version: 1},
+		{ID: "j-done", ProjectID: "p-1", Type: domain.JobTypeGeneration, Status: domain.JobStatusSucceeded, Version: 1},
+		{ID: "j-other-project", ProjectID: "p-2", Type: domain.JobTypeGeneration, Status: domain.JobStatusQueued, Version: 1},
+		{ID: "j-other-type", ProjectID: "p-1", Type: domain.JobTypeExport, Status: domain.JobStatusQueued, Version: 1},
+	}
+	for _, job := range jobs {
+		if err := store.CreateJob(job); err != nil {
+			t.Fatalf("create job failed: %v", err)
+		}
+	}
+
+	active, err := store.ListActiveJobs("p-1", domain.JobTypeGeneration)
+	if err != nil {
+		t.Fatalf("list active jobs failed: %v", err)
+	}
+	if len(active) != 2 {
+		t.Fatalf("expected 2 active jobs, got %d", len(active))
+	}
+	for _, job := range active {
+		if job.ProjectID != "p-1" || job.Type != domain.JobTypeGeneration {
+			t.Fatalf("unexpected active job: %+v", job)
+		}
+		if job.Status != domain.JobStatusQueued && job.Status != domain.JobStatusRunning {
+			t.Fatalf("expected only queued/running jobs, got %s", job.Status)
+		}
+	}
+}
+
 func TestMemoryStoreUpdateFrameMetadata(t *testing.T) {
 	store := NewMemoryStudioStore()
 	store.ReplaceFrames("p-1", []domain.Frame{
