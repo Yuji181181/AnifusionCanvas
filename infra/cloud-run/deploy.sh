@@ -9,6 +9,10 @@ set -euo pipefail
 ROOT_DIR=$(cd "$(dirname "$0")/../.." && pwd)
 IMAGE_URI="${GCP_REGION}-docker.pkg.dev/${GCP_PROJECT_ID}/${GCP_ARTIFACT_REPOSITORY}/${GCP_SERVICE_NAME}:latest"
 ENV_FILE=$(mktemp)
+CLOUD_RUN_CPU="${CLOUD_RUN_CPU:-2}"
+CLOUD_RUN_MEMORY="${CLOUD_RUN_MEMORY:-2Gi}"
+CLOUD_RUN_TIMEOUT="${CLOUD_RUN_TIMEOUT:-900s}"
+CLOUD_RUN_CONCURRENCY="${CLOUD_RUN_CONCURRENCY:-4}"
 
 cleanup() {
   rm -f "$ENV_FILE"
@@ -40,4 +44,10 @@ gcloud run deploy "$GCP_SERVICE_NAME" \
   --region "$GCP_REGION" \
   --platform managed \
   --allow-unauthenticated \
+  --cpu "$CLOUD_RUN_CPU" \
+  --memory "$CLOUD_RUN_MEMORY" \
+  --timeout "$CLOUD_RUN_TIMEOUT" \
+  --concurrency "$CLOUD_RUN_CONCURRENCY" \
+  --no-cpu-throttling \
+  --cpu-boost \
   --env-vars-file "$ENV_FILE"
