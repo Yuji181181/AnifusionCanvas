@@ -258,20 +258,20 @@ Issue: #28
 - [x] database store を Cloud Run で有効化する設定がある
 - [x] R2 public base URL を optional として扱う修正済み
 - [x] `docs/operations-guide.md` に動作確認手順を追加
-- [ ] Secret Manager の secret 名、取得元、更新手順、権限境界の整理はまだ不足
-- [ ] `VITE_API_BASE_URL` と `FRONTEND_ORIGIN` の本番値の確認結果が未記録
-- [ ] Cloud Run の memory / CPU / timeout / concurrency が実ジョブ基準で未調整
-- [ ] Artifact Registry、Cloud Run、Cloudflare Pages、R2、TiDB の最小権限整理が未完了
-- [ ] R2 bucket の CORS、public access、lifecycle rule が未確定
-- [ ] Replicate token の保管、ローテーション、コスト上限運用が未確定
-- [ ] 本番 smoke test と rollback 手順が未完成
+- [x] Secret Manager の secret 名、取得元、更新手順、権限境界を `docs/production-deployment-runbook.md` に整理
+- [x] `VITE_API_BASE_URL` と `FRONTEND_ORIGIN` の本番値を runbook に記録
+- [x] Cloud Run の memory / CPU / timeout / concurrency を deploy script と service.yaml で調整
+- [x] Artifact Registry、Cloud Run、R2、TiDB、Replicate の権限と手動操作を runbook に整理
+- [ ] R2 bucket の CORS、public access、lifecycle rule は手順化済みだが実 bucket への適用結果は未記録
+- [ ] Replicate token の保管手順は整理済み。コスト上限の実設定結果は未記録
+- [x] 本番 smoke test と rollback 手順を runbook に追加
 
 次の作業:
 
-- `docs/deployment-guide.md` に secret 一覧、取得元、更新手順、検証コマンドを追記する
-- Cloud Run `/health` と `/health/dependencies` の本番確認結果を記録する
-- Pages 公開 URL から Cloud Run API へ CORS エラーなく通信できることを確認する
-- rollback 手順を deploy workflow 単位で書く
+- `docs/production-deployment-runbook.md` の手順に沿ってユーザー側で Secret / R2 / Pages / Replicate を設定する
+- Cloud Run `/health` と `/health/dependencies` の本番確認結果を `docs/operations-guide.md` に記録する
+- Pages 公開 URL から Cloud Run API へ CORS エラーなく通信できることを確認し、結果を記録する
+- 実 Replicate / R2 / TiDB を使った smoke test の実行日と結果を残す
 
 ### Phase 9: ポートフォリオ完成度の仕上げ
 
