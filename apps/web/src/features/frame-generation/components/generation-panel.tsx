@@ -111,10 +111,6 @@ export function GenerationPanel() {
           <h1>AIで中割りを生成</h1>
           <p>2枚の原画と動きの指示から、編集可能なフレーム列を生成します。</p>
         </div>
-        <div className="run-note" role="note">
-          <strong>本番モードではReplicateの課金対象です</strong>
-          <span>1回の生成は数十秒から数分かかることがあります。連打せず、ジョブ状態が完了するまで待ってください。</span>
-        </div>
         <form className="form-grid" id="generation-form" onSubmit={handleSubmit(runGeneration)}>
           <label>
             動きの指示

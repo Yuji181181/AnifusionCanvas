@@ -4,7 +4,4 @@
 - `cloudflare-pages/`: Vite SPA の Cloudflare Pages 設定
 - `docker/`: 必要になればローカル補助設定を置く
 
-参照ドキュメント:
-
-- `docs/deployment-guide.md`
-- `docs/deployment-checklist.md`
+本番デプロイの概要はリポジトリルートの `README.md` に集約しています。
