@@ -212,7 +212,7 @@ Issue: #26
 - [x] Export に動画再生、download、再書き出し、書き出し中 disable を追加
 - [ ] shadcn/ui / Radix UI の導入方針は未確定
 - [x] Step 2 のブラシサイズ調整、マスク表示切替、undo を追加
-- [ ] Step 2 の対象フレーム切替は未完了
+- [x] Step 2 の対象フレーム切替を追加
 - [ ] Step 3 のレイヤー管理、重ね順、表示 / 非表示、複製、多角形、変形 UI は未完了
 - [ ] API failure / job failure からの復帰 UX は不足
 - [ ] モバイル / タブレット / デスクトップの網羅確認は未記録
@@ -220,7 +220,7 @@ Issue: #26
 次の作業:
 
 - UI 方針を「shadcn/ui を導入する」か「既存 Tailwind custom UI を正式採用する」かで決める
-- Step 2 の対象フレーム切替と失敗復帰を優先して仕上げる
+- Step 2 の失敗復帰を優先して仕上げる
 - Step 3 はポートフォリオ用途で必要な編集機能に絞り、レイヤー管理を入れるかを判断する
 - Playwright screenshot または手動チェックで主要 viewport の崩れを記録する
 

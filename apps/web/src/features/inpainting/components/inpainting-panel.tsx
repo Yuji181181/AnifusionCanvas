@@ -2,7 +2,7 @@ import type { InpaintFrameResult } from '@anifusion/contracts'
 import { inpaintingFormSchema, type InpaintingFormValues } from '@/lib/form-schemas'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useMutation, useQuery } from '@tanstack/react-query'
-import { AlertTriangle, Eraser, Eye, EyeOff, Undo, Wand2 } from 'lucide-react'
+import { AlertTriangle, Eraser, Eye, EyeOff, Images, Undo, Wand2 } from 'lucide-react'
 import { Canvas, PencilBrush } from 'fabric'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useForm } from 'react-hook-form'
@@ -13,9 +13,12 @@ import { useFrameStore, useSelectedFrame } from '@/stores/frame-store'
 
 export function InpaintingPanel() {
   const projectId = useFrameStore((state) => state.projectId)
+  const frames = useFrameStore((state) => state.frames)
+  const selectedFrameId = useFrameStore((state) => state.selectedFrameId)
   const upsertFrame = useFrameStore((state) => state.upsertFrame)
   const activeJob = useFrameStore((state) => state.activeJob)
   const setActiveJob = useFrameStore((state) => state.setActiveJob)
+  const setSelectedFrameId = useFrameStore((state) => state.setSelectedFrameId)
   const frame = useSelectedFrame()
   const canvasElementRef = useRef<HTMLCanvasElement | null>(null)
   const fabricRef = useRef<Canvas | null>(null)
@@ -183,6 +186,30 @@ export function InpaintingPanel() {
           <span>Step 2</span>
           <h1>AIで破綻部分だけ修正</h1>
           <p>黒いブラシでマスクを描き、自然言語で修正内容を指定します。</p>
+        </div>
+        <div className="target-frame-picker" aria-label="修正対象フレーム">
+          <div className="target-frame-heading">
+            <Images aria-hidden="true" size={16} />
+            <span>対象フレーム</span>
+          </div>
+          {frames.length > 0 ? (
+            <div className="target-frame-strip">
+              {frames.map((item) => (
+                <button
+                  aria-pressed={item.id === selectedFrameId}
+                  className={item.id === selectedFrameId ? 'target-frame-option selected' : 'target-frame-option'}
+                  key={item.id}
+                  onClick={() => setSelectedFrameId(item.id)}
+                  type="button"
+                >
+                  <img src={item.thumbnailUrl || item.imageUrl} alt={`${item.index + 1}枚目`} />
+                  <span>{item.index + 1}</span>
+                </button>
+              ))}
+            </div>
+          ) : (
+            <p className="target-frame-empty">Step 1でフレームを生成すると選択できます</p>
+          )}
         </div>
         <form onSubmit={handleSubmit(runInpaint)}>
           <input type="hidden" {...register('maskDataUrl')} />
