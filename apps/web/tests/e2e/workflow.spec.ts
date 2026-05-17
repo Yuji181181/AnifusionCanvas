@@ -116,4 +116,64 @@ test.describe('AnifusionCanvas E2E', () => {
     await expect(page.locator('canvas').first()).toBeVisible()
     await expect(page.locator('.icon-button').first()).toBeVisible()
   })
+
+  test('inpainting target frame can be switched in step 2', async ({ page }) => {
+    await page.goto('/step1')
+
+    await page.route('**/inference/generate', async (route) => {
+      await route.fulfill({
+        status: 202,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          job: {
+            id: 'job-e2e-picker',
+            type: 'generation',
+            status: 'queued',
+            progress: 0,
+            message: 'accepted',
+            version: 1,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          },
+        }),
+      })
+    })
+
+    await page.route('**/jobs/job-e2e-picker', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          job: {
+            id: 'job-e2e-picker',
+            type: 'generation',
+            status: 'succeeded',
+            progress: 100,
+            message: 'done',
+            version: 2,
+            result: {
+              frames: [
+                { id: 'pick-0', projectId: 'demo-project', index: 0, imageUrl: 'data:image/png;base64,A', thumbnailUrl: 'data:image/png;base64,A', kind: 'key', updatedAt: new Date().toISOString() },
+                { id: 'pick-1', projectId: 'demo-project', index: 1, imageUrl: 'data:image/png;base64,B', thumbnailUrl: 'data:image/png;base64,B', kind: 'generated', updatedAt: new Date().toISOString() },
+              ],
+            },
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          },
+        }),
+      })
+    })
+
+    await page.getByRole('button', { name: /生成を開始/ }).click()
+    await expect(page.locator('.frame-thumb')).toHaveCount(2)
+
+    await page.locator('.step-link').nth(1).click()
+
+    const options = page.locator('.target-frame-option')
+    await expect(options).toHaveCount(2)
+    await expect(options.first()).toHaveAttribute('aria-pressed', 'true')
+
+    await options.nth(1).click()
+    await expect(options.nth(1)).toHaveAttribute('aria-pressed', 'true')
+  })
 })
