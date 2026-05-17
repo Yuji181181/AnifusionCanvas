@@ -411,6 +411,10 @@ progress {
   z-index: 1;
 }
 
+.canvas-panel.mask-hidden .canvas-container {
+  opacity: 0;
+}
+
 .editor-page {
   display: grid;
   gap: 14px;

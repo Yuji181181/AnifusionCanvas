@@ -211,7 +211,8 @@ Issue: #26
 - [x] Timeline に frame kind、選択状態、drag reorder を追加
 - [x] Export に動画再生、download、再書き出し、書き出し中 disable を追加
 - [ ] shadcn/ui / Radix UI の導入方針は未確定
-- [ ] Step 2 のブラシサイズ調整、マスク表示切替、undo、対象フレーム切替は未完了
+- [x] Step 2 のブラシサイズ調整、マスク表示切替、undo を追加
+- [ ] Step 2 の対象フレーム切替は未完了
 - [ ] Step 3 のレイヤー管理、重ね順、表示 / 非表示、複製、多角形、変形 UI は未完了
 - [ ] API failure / job failure からの復帰 UX は不足
 - [ ] モバイル / タブレット / デスクトップの網羅確認は未記録
@@ -219,7 +220,7 @@ Issue: #26
 次の作業:
 
 - UI 方針を「shadcn/ui を導入する」か「既存 Tailwind custom UI を正式採用する」かで決める
-- Step 2 のブラシ UX と失敗復帰を優先して仕上げる
+- Step 2 の対象フレーム切替と失敗復帰を優先して仕上げる
 - Step 3 はポートフォリオ用途で必要な編集機能に絞り、レイヤー管理を入れるかを判断する
 - Playwright screenshot または手動チェックで主要 viewport の崩れを記録する
 
@@ -285,13 +286,12 @@ Issue: #29
 - [ ] デモ用のサンプルキーフレームは未整備
 - [ ] スクリーンショットまたは短いデモ動画は未整備
 - [ ] 失敗時に高額な再試行が連発しない UI / API 制限は未実装
-- [ ] README の `React 19` 記述と実依存 `react@18.3.1` に不一致がある
-- [ ] README の `shadcn/ui, Radix UI` 記述は要件上の前提だが、実依存には未導入
+- [x] README の `React 19` 記述と実依存 `react@18.3.1` の不一致を修正
+- [x] README の UI 技術表記を実依存の TailwindCSS、custom components、lucide-react に修正
 - [ ] 最終レビューで旧技術名、本文 / 表 / 図の不一致を再確認する必要がある
 
 次の作業:
 
-- README の技術スタックを実依存に合わせて修正する
 - デモ素材、スクリーンショット、短い動画を追加する
 - 推論コストの取得日と再確認手順を明記する
 - 採用 / 評価者が 5 分で価値を把握できる demo path を用意する
