@@ -1,13 +1,11 @@
 import { Link } from '@tanstack/react-router'
-import { Clapperboard, Download, Eraser, PenTool, Sparkles } from 'lucide-react'
+import { Clapperboard, Eraser, Sparkles } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { Timeline } from '@/features/timeline/components/timeline'
 
 const steps = [
   { to: '/step1', label: 'AI中割り', icon: Sparkles },
   { to: '/step2', label: 'Inpainting', icon: Eraser },
-  { to: '/step3', label: '手動編集', icon: PenTool },
-  { to: '/export', label: '書き出し', icon: Download },
 ] as const
 
 type Props = {
