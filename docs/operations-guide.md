@@ -362,12 +362,12 @@ bun run test:web
 ### 8.3 E2E テスト
 
 ```bash
-# 事前に API サーバーとフロントエンドを起動しておく
+# 事前にフロントエンドを起動しておく
 cd apps/web
 bun run test:e2e
 ```
 
-注: CI では E2E テストは未実行（dev サーバーと API の両方の起動が必要なため）。
+E2E は通常 CI でも Chromium で実行される。CI では workflow が Vite dev server を起動し、外部 API 依存はテスト内の route mock で分離する。
 
 ## 9. 本番環境の動作確認
 

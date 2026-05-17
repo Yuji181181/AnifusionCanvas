@@ -1,8 +1,18 @@
 import { test, expect } from '@playwright/test'
 
 test.describe('AnifusionCanvas E2E', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.route('**/projects/*/frames', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ frames: [] }),
+      })
+    })
+  })
+
   test('app loads and shows main workflow', async ({ page }) => {
-    await page.goto('/')
+    await page.goto('/step1')
 
     await expect(page.locator('h1').first()).toBeVisible()
     await expect(page.locator('.step-nav')).toBeVisible()
@@ -26,20 +36,21 @@ test.describe('AnifusionCanvas E2E', () => {
   })
 
   test('generation form validates input', async ({ page }) => {
-    await page.goto('/step1/generate')
+    await page.goto('/step1')
 
     await expect(page.locator('h1')).toContainText('中割りを生成')
 
     const submitButton = page.getByRole('button', { name: /生成を開始/ })
     await expect(submitButton).toBeVisible()
 
+    await page.locator('textarea').first().fill('')
     await submitButton.click()
 
     await expect(page.locator('.field-error').first()).toBeVisible()
   })
 
   test('timeline displays frame kind tags after generating demo frames', async ({ page }) => {
-    await page.goto('/step1/generate')
+    await page.goto('/step1')
 
     await page.route('**/inference/generate', async (route) => {
       await route.fulfill({
@@ -99,10 +110,10 @@ test.describe('AnifusionCanvas E2E', () => {
   })
 
   test('editor panel renders canvas and tools', async ({ page }) => {
-    await page.goto('/step3/edit')
+    await page.goto('/step3')
 
-    await expect(page.locator('.toolbar')).toBeVisible()
-    await expect(page.locator('canvas')).toBeVisible()
+    await expect(page.locator('.toolbar').first()).toBeVisible()
+    await expect(page.locator('canvas').first()).toBeVisible()
     await expect(page.locator('.icon-button').first()).toBeVisible()
   })
 })

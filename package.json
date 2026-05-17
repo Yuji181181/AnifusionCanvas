@@ -8,6 +8,7 @@
     "dev:web": "bun run --cwd apps/web dev",
     "build:web": "bun run --cwd apps/web build",
     "test:web": "bun run --cwd apps/web test",
+    "test:e2e:web": "bun run --cwd apps/web test:e2e",
     "lint:web": "bun run --cwd apps/web lint"
   }
 }

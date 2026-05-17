@@ -1,5 +1,5 @@
 import type { ExportVideoResult } from '@anifusion/contracts'
-import type { ExportFormValues } from '@/lib/form-schemas'
+import { exportFormSchema, type ExportFormValues } from '@/lib/form-schemas'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { AlertTriangle, Download, Film, Play, RotateCcw } from 'lucide-react'

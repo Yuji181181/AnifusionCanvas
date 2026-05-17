@@ -1,5 +1,5 @@
 import type { GenerateFramesResult } from '@anifusion/contracts'
-import type { GenerationFormValues } from '@/lib/form-schemas'
+import { generationFormSchema, type GenerationFormValues } from '@/lib/form-schemas'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { AlertTriangle, ImagePlus, Play } from 'lucide-react'

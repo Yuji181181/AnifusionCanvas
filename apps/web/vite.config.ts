@@ -15,6 +15,7 @@ export default defineConfig({
       },
     },
   },
+  cacheDir: '../../tmp/vite-web-cache',
   plugins: [react()],
   resolve: {
     alias: {

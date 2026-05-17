@@ -42,7 +42,7 @@
 | FFmpeg | 実装済み | MP4 分割と PNG 群からの MP4 エンコードあり |
 | ジョブ制御 | 一部実装済み | queued / running / succeeded / failed、version による楽観的ロック、失敗時 cleanup あり |
 | E2E | 初期実装済み | Playwright の smoke / navigation / validation / timeline / editor tests あり |
-| CI | 一部実装済み | web lint / build / unit test、api test は実行。Playwright E2E は CI 未統合 |
+| CI | 一部実装済み | web lint / build / unit test / Playwright E2E、api test を実行 |
 | 本番運用 | 一部整備済み | deploy docs と operations guide あり。Secret / 権限 / smoke / rollback は追加整理が必要 |
 
 ## 完了定義と現在の充足状況
@@ -58,7 +58,7 @@
 - [x] ジョブ状態とフレームメタデータを TiDB / MySQL に永続化できる
 - [ ] 実 Replicate 環境で ToonCrafter と SDXL Inpainting の end-to-end 品質確認が完了している
 - [ ] Cloud Run と Cloudflare Pages の本番 URL で主要フローが完走している
-- [ ] CI で Playwright E2E まで自動実行されている
+- [x] CI で Playwright E2E まで自動実行されている
 - [ ] shadcn/ui / Radix UI の導入方針と実装体系が確定している
 - [ ] testcontainers-go による DB 結合テストがある
 - [ ] Secret Manager、権限、rollback、コスト上限、smoke test が本番運用手順として固定されている
@@ -238,12 +238,12 @@ Issue: #27
 - [ ] Playwright は happy path の一部に留まり、Inpainting、保存、export の完全フローは未完了
 - [ ] API failure / job failure の recovery path E2E は未実装
 - [ ] testcontainers-go で TiDB 互換または MySQL 結合テストは未実装
-- [ ] CI に Playwright E2E は未統合
+- [x] CI に Playwright E2E を統合
 - [ ] flaky test 対策と CI 所要時間の記録は未整備
 
 次の作業:
 
-- Playwright を CI に追加する前に、ブラウザ install と cache 方針を決める
+- Playwright の CI 実行時間を見ながら、ブラウザ install の cache 方針を必要に応じて見直す
 - E2E を「demo mode happy path」「API failure」「job failure」「export」の順に増やす
 - DB store は testcontainers-go または Docker Compose のどちらで検証するか決める
 - 外部サービス検証は protected environment または手動 opt-in に分離する
@@ -347,7 +347,7 @@ Issue: #29
 
 目的: 現在の実装済みワークフローを継続的に壊さないようにする。
 
-- Playwright を CI に追加
+- Playwright E2E を CI で安定運用する
 - demo mode の生成 -> Inpainting -> 手動編集 -> Export happy path を追加
 - API failure / job failure recovery path を追加
 - testcontainers-go または Docker Compose による DB store 結合テストを追加
@@ -412,7 +412,7 @@ Issue: #29
 - branch protection がなく、CI 必須化がされていない
 - Cloud Run の background goroutine 方式は長時間 AI / FFmpeg 処理で停止リスクがある
 - 実 Replicate / R2 / TiDB / Cloud Run / Pages を組み合わせた本番 smoke test が未記録
-- Playwright E2E が CI に入っていない
+- Playwright E2E の CI 所要時間と flaky test 対策が未整理
 - testcontainers-go による DB 結合テストがない
 - shadcn/ui / Radix UI は要件に残っているが実装体系としては未導入
 - README に React version と UI 技術スタックの不一致がある
