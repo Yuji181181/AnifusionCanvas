@@ -155,6 +155,7 @@ test.describe('AnifusionCanvas E2E', () => {
     await expect(page.locator('.toolbar').first()).toBeVisible()
     await expect(page.locator('canvas').first()).toBeVisible()
     await expect(page.locator('.icon-button').first()).toBeVisible()
+    await expect(page.getByTitle('多角形')).toBeVisible()
     await expect(page.getByTitle('選択オブジェクトを複製')).toBeVisible()
     await expect(page.getByTitle('選択オブジェクトを背面へ')).toBeVisible()
     await expect(page.getByTitle('選択オブジェクトを前面へ')).toBeVisible()
