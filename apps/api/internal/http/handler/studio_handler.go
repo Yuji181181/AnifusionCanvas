@@ -2,12 +2,20 @@ package handler
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
 	"strings"
 
 	"github.com/haseg/anifusion-canvas/apps/api/internal/domain"
 	"github.com/haseg/anifusion-canvas/apps/api/internal/usecase"
 	"github.com/labstack/echo/v4"
+)
+
+const (
+	maxPromptLength         = 500
+	maxNegativePromptLength = 500
+	maxDataURLLength        = 8 * 1024 * 1024
+	maxExportFPS            = 24
 )
 
 type StudioHandler struct {
@@ -104,6 +112,12 @@ func (h *StudioHandler) GenerateFrames(c echo.Context) error {
 	if isBlank(input.Prompt) {
 		return echo.NewHTTPError(http.StatusBadRequest, "prompt is required")
 	}
+	if exceedsLength(input.Prompt, maxPromptLength) {
+		return echo.NewHTTPError(http.StatusBadRequest, maxLengthMessage("prompt", maxPromptLength))
+	}
+	if exceedsLength(input.NegativePrompt, maxNegativePromptLength) {
+		return echo.NewHTTPError(http.StatusBadRequest, maxLengthMessage("negativePrompt", maxNegativePromptLength))
+	}
 	if input.FrameCount < 2 || input.FrameCount > 12 {
 		return echo.NewHTTPError(http.StatusBadRequest, "frameCount must be between 2 and 12")
 	}
@@ -112,6 +126,12 @@ func (h *StudioHandler) GenerateFrames(c echo.Context) error {
 	}
 	if !isDataURL(input.EndImageDataURL) {
 		return echo.NewHTTPError(http.StatusBadRequest, "endImageDataUrl must be a data URL")
+	}
+	if exceedsLength(input.StartImageDataURL, maxDataURLLength) {
+		return echo.NewHTTPError(http.StatusBadRequest, maxDataURLMessage("startImageDataUrl"))
+	}
+	if exceedsLength(input.EndImageDataURL, maxDataURLLength) {
+		return echo.NewHTTPError(http.StatusBadRequest, maxDataURLMessage("endImageDataUrl"))
 	}
 
 	return c.JSON(http.StatusAccepted, map[string]any{"job": h.service.GenerateFrames(input)})
@@ -131,11 +151,17 @@ func (h *StudioHandler) InpaintFrame(c echo.Context) error {
 	if isBlank(input.Prompt) {
 		return echo.NewHTTPError(http.StatusBadRequest, "prompt is required")
 	}
+	if exceedsLength(input.Prompt, maxPromptLength) {
+		return echo.NewHTTPError(http.StatusBadRequest, maxLengthMessage("prompt", maxPromptLength))
+	}
 	if isBlank(input.MaskDataURL) {
 		return echo.NewHTTPError(http.StatusBadRequest, "maskDataUrl is required")
 	}
 	if !isDataURL(input.MaskDataURL) {
 		return echo.NewHTTPError(http.StatusBadRequest, "maskDataUrl must be a data URL")
+	}
+	if exceedsLength(input.MaskDataURL, maxDataURLLength) {
+		return echo.NewHTTPError(http.StatusBadRequest, maxDataURLMessage("maskDataUrl"))
 	}
 	if input.Strength < 0.1 || input.Strength > 1 {
 		return echo.NewHTTPError(http.StatusBadRequest, "strength must be between 0.1 and 1")
@@ -163,6 +189,9 @@ func (h *StudioHandler) UpdateFrame(c echo.Context) error {
 	}
 	if !isDataURL(input.ImageDataURL) {
 		return echo.NewHTTPError(http.StatusBadRequest, "imageDataUrl must be a data URL")
+	}
+	if exceedsLength(input.ImageDataURL, maxDataURLLength) {
+		return echo.NewHTTPError(http.StatusBadRequest, maxDataURLMessage("imageDataUrl"))
 	}
 
 	frame, err := h.service.UpdateFrame(c.Request().Context(), input)
@@ -270,8 +299,8 @@ func (h *StudioHandler) ExportVideo(c echo.Context) error {
 	if input.FPS <= 0 {
 		return echo.NewHTTPError(http.StatusBadRequest, "fps must be greater than 0")
 	}
-	if input.FPS > 60 {
-		return echo.NewHTTPError(http.StatusBadRequest, "fps must be 60 or less")
+	if input.FPS > maxExportFPS {
+		return echo.NewHTTPError(http.StatusBadRequest, "fps must be 24 or less")
 	}
 
 	return c.JSON(http.StatusAccepted, map[string]any{"job": h.service.ExportVideo(input)})
@@ -300,6 +329,18 @@ func isBlank(value string) bool {
 
 func isDataURL(value string) bool {
 	return strings.HasPrefix(strings.TrimSpace(value), "data:")
+}
+
+func exceedsLength(value string, maxLength int) bool {
+	return len(strings.TrimSpace(value)) > maxLength
+}
+
+func maxLengthMessage(field string, maxLength int) string {
+	return fmt.Sprintf("%s must be %d characters or less", field, maxLength)
+}
+
+func maxDataURLMessage(field string) string {
+	return fmt.Sprintf("%s must be 8 MiB or less", field)
 }
 
 func isValidFrameKind(kind domain.FrameKind) bool {

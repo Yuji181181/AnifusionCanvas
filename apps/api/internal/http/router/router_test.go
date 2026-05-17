@@ -281,6 +281,31 @@ func TestStudioRoutesRejectInvalidRequests(t *testing.T) {
 			},
 		},
 		{
+			name:   "generate prompt too long",
+			method: http.MethodPost,
+			path:   "/inference/generate",
+			body: map[string]any{
+				"projectId":         "project-1",
+				"prompt":            strings.Repeat("a", 501),
+				"frameCount":        2,
+				"startImageDataUrl": "data:image/png;base64,start",
+				"endImageDataUrl":   "data:image/png;base64,end",
+			},
+		},
+		{
+			name:   "generate negative prompt too long",
+			method: http.MethodPost,
+			path:   "/inference/generate",
+			body: map[string]any{
+				"projectId":         "project-1",
+				"prompt":            "turn around",
+				"negativePrompt":    strings.Repeat("a", 501),
+				"frameCount":        2,
+				"startImageDataUrl": "data:image/png;base64,start",
+				"endImageDataUrl":   "data:image/png;base64,end",
+			},
+		},
+		{
 			name:   "generate invalid start image",
 			method: http.MethodPost,
 			path:   "/inference/generate",
@@ -293,6 +318,18 @@ func TestStudioRoutesRejectInvalidRequests(t *testing.T) {
 			},
 		},
 		{
+			name:   "generate image too large",
+			method: http.MethodPost,
+			path:   "/inference/generate",
+			body: map[string]any{
+				"projectId":         "project-1",
+				"prompt":            "turn around",
+				"frameCount":        2,
+				"startImageDataUrl": "data:image/png;base64," + strings.Repeat("a", 8*1024*1024),
+				"endImageDataUrl":   "data:image/png;base64,end",
+			},
+		},
+		{
 			name:   "inpaint missing mask",
 			method: http.MethodPost,
 			path:   "/inference/inpaint",
@@ -301,6 +338,18 @@ func TestStudioRoutesRejectInvalidRequests(t *testing.T) {
 				"frameId":   "frame-1",
 				"prompt":    "fix hand",
 				"strength":  0.7,
+			},
+		},
+		{
+			name:   "inpaint prompt too long",
+			method: http.MethodPost,
+			path:   "/inference/inpaint",
+			body: map[string]any{
+				"projectId":   "project-1",
+				"frameId":     "frame-1",
+				"prompt":      strings.Repeat("a", 501),
+				"maskDataUrl": "data:image/png;base64,mask",
+				"strength":    0.7,
 			},
 		},
 		{
@@ -347,6 +396,14 @@ func TestStudioRoutesRejectInvalidRequests(t *testing.T) {
 			path:   "/projects/project-1/frames/frame-1",
 			body: map[string]any{
 				"imageDataUrl": "https://example.test/edited.png",
+			},
+		},
+		{
+			name:   "update image too large",
+			method: http.MethodPut,
+			path:   "/projects/project-1/frames/frame-1",
+			body: map[string]any{
+				"imageDataUrl": "data:image/png;base64," + strings.Repeat("a", 8*1024*1024),
 			},
 		},
 		{

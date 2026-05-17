@@ -28,7 +28,7 @@ export type InpaintingFormValues = z.infer<typeof inpaintingFormSchema>
 
 export const exportFormSchema = z.object({
   projectId: z.string().min(1, 'プロジェクトIDは必須です'),
-  fps: z.number().int().min(1, '1以上で指定してください').max(60, '60以下で指定してください'),
+  fps: z.number().int().min(1, '1以上で指定してください').max(24, '24以下で指定してください'),
 })
 
 export type ExportFormValues = z.infer<typeof exportFormSchema>
