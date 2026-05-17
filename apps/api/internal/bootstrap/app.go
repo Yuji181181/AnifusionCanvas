@@ -46,7 +46,7 @@ func NewApp() (*App, error) {
 		studioStore = store
 	}
 	var objectStore usecase.ObjectStore
-	if isR2Configured(cfg) {
+	if shouldUseObjectStore(cfg) {
 		store, err := storage.NewR2Store(context.Background(), cfg)
 		if err != nil {
 			return nil, err
@@ -80,4 +80,11 @@ func isR2Configured(cfg config.Config) bool {
 		cfg.R2EndpointURL != "" &&
 		cfg.R2AccessKeyID != "" &&
 		cfg.R2SecretAccessKey != ""
+}
+
+func shouldUseObjectStore(cfg config.Config) bool {
+	if !isR2Configured(cfg) {
+		return false
+	}
+	return cfg.ReplicateMode == "replicate" || cfg.R2PublicBaseURL != ""
 }

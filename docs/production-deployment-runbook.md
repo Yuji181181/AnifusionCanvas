@@ -115,6 +115,8 @@ export CLOUD_RUN_CONCURRENCY=4
 
 R2 bucket では、Cloud Run からの S3 compatible API upload と、ブラウザから成果物を取得する公開 URL の扱いを分けて確認します。
 
+`REPLICATE_MODE=demo` かつ `R2_PUBLIC_BASE_URL` が空の場合、ブラウザで表示できない `r2://` URL を返さないよう、API は demo 画像を data URL のまま扱います。実推論モードまたは公開 URL 設定済みの場合は R2 保存を使います。
+
 必須:
 
 - bucket 名が `R2_BUCKET` と一致している
