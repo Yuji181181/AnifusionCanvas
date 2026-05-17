@@ -41,7 +41,7 @@ DB-backed store を有効化する場合は次を設定する。
 STUDIO_STORE=database
 ```
 
-既存DBのスキーマが合わない場合は `docs/database-setup.md` を参照する。
+既存DBのスキーマが合わない場合は、`internal/infrastructure/db/migrations` の適用状況を確認する。
 
 ## Required Environment Variables
 

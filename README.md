@@ -1,128 +1,150 @@
 # AnifusionCanvas
 
-アニメーション制作の「中割り」工程を AI で支援する Human-in-the-Loop 型ツール。
-クリエイターが介在して品質を担保しながら、ToonCrafter によるフレーム補間と
-SDXL Inpainting による部分修正を行います。
+アニメ制作現場のDXをテーマにした、AI中割り支援デモアプリケーションです。
 
-現在の公開 UI は「AI中割り」と「Inpainting」に絞っています。手動編集と書き出しの既存コードや API は残していますが、通常のフロントエンド導線からは外しています。
+原画2枚から ToonCrafter で中割りフレームを生成し、破綻した箇所だけを SDXL Inpainting で部分修正します。制作現場で人間の判断を残しながら、AIで作業負荷を下げる Human-in-the-Loop 型のワークフローを検証するために開発しました。
+
+## 制作意図
+
+このアプリケーションは、AIエンジニアとしての就職活動に向けたポートフォリオです。
+
+私は、ソニーやサイバーエージェントのようにアニメ・映像コンテンツを持つ企業で、アニメ制作現場のDX化を推進したいと考えています。中割り、修正、確認といった制作工程には、熟練したクリエイターの判断が必要な一方で、反復的で負荷の高い作業も多く存在します。
+
+AnifusionCanvas は、その課題に対して「AIで完全自動化する」のではなく、「クリエイターが主導権を持ったままAIを使う」体験をWebアプリとして形にしたものです。
+
+## デモURL
+
+- Frontend: `https://anifusion-canvas.pages.dev`
+- API: `https://anifusion-api-976317870900.asia-northeast1.run.app`
+
+2026-05-18 に、本番環境で AI中割り 1回、Inpainting 1回の実推論 smoke test を完了しています。
+
+## 主な機能
+
+- 2枚の原画をアップロードして、AI中割りフレームを生成
+- 生成されたフレームをタイムラインで確認
+- 修正したいフレームを選び、黒いブラシでマスクを描画
+- 自然言語プロンプトでマスク部分だけを Inpainting
+- ジョブ状態の表示、失敗時の再試行導線
+- 画像サイズ・形式の基本バリデーション
+
+現在の公開UIは「AI中割り」と「Inpainting」に絞っています。
 
 ## ワークフロー
 
+```text
+Step 1: AI中割り
+原画1 + 原画2 + 動きの指示
+        ↓
+ToonCrafter 推論
+        ↓
+生成フレームをタイムラインへ保存
+
+Step 2: Inpainting
+対象フレーム選択 + マスク描画 + 修正プロンプト
+        ↓
+SDXL Inpainting 推論
+        ↓
+修正済みフレームをタイムラインへ反映
 ```
-Step 1:          Step 2:
-原画アップロード  AI で部分修正
-      ↓              ↓
-┌──────────┐  ┌──────────┐
-│ ToonCrafter │→│SDXL Inpaint│
-│ フレーム補間 │  │ マスク修正 │
-└──────────┘  └──────────┘
-```
+
+## 技術的な見どころ
+
+- React SPA と Go API を分離した実運用寄りの構成
+- TanStack Query によるジョブポーリングと非同期状態管理
+- Zustand によるタイムライン・選択フレーム状態の管理
+- Fabric.js を使った Inpainting 用マスク描画
+- Go + Echo による API / usecase / infrastructure の分離
+- Replicate API を使った ToonCrafter / SDXL Inpainting 推論
+- FFmpeg による ToonCrafter 出力動画のフレーム分割
+- Cloudflare R2 への生成物保存
+- TiDB Serverless によるジョブ・フレーム永続化
+- Cloud Run + Cloudflare Pages への本番デプロイ
+- GitHub Actions による build / test / deploy
 
 ## アーキテクチャ
 
-```
-┌───────────── Cloudflare Pages ───────────────┐
-│  React SPA (Vite + TanStack Router)          │
-│  ┌──────┐ ┌──────┐                         │
-│  │Step 1│ │Step 2│                         │
-│  └──────┘ └──────┘                         │
-│  Zustand / TanStack Query / Fabric.js       │
-└──────────────────┬──────────────────────────┘
-                   │ HTTPS
-┌──────────────────▼──────────────────────────┐
-│  Google Cloud Run (Go + Echo)               │
-│  ┌─────────────────────────────────────┐    │
-│  │ Inference / Frame / Job             │    │
-│  │ Usecase → Repository → Infrastructure│   │
-│  └─────────────────────────────────────┘    │
-│  Replicate / R2 / FFmpeg / TiDB             │
-└──────────────────┬──────────────────────────┘
-         ┌─────────┼──────────┐
-         ▼         ▼          ▼
-    ┌────────┐ ┌──────┐ ┌──────────┐
-    │  TiDB  │ │  R2  │ │Replicate │
-    │Serverless│ │Storage│ │   API   │
-    └────────┘ └──────┘ └──────────┘
+```text
+Cloudflare Pages
+  React + Vite + TanStack Router
+  Zustand / TanStack Query / Fabric.js
+          |
+          | HTTPS
+          v
+Google Cloud Run
+  Go + Echo
+  Handler -> Usecase -> Infrastructure
+          |
+          +-- Replicate
+          +-- Cloudflare R2
+          +-- TiDB Serverless
+          +-- FFmpeg
 ```
 
 ## 技術スタック
 
 | 領域 | 技術 |
 |------|------|
-| フロントエンド | React 18, Vite, TanStack Router/Query, Zustand |
-| Canvas 編集 | Fabric.js 7 |
-| フォーム / バリデーション | React Hook Form + Zod |
+| Frontend | React 18, Vite, TanStack Router, TanStack Query |
+| State | Zustand |
+| Form | React Hook Form, Zod |
+| Canvas | Fabric.js |
 | UI | TailwindCSS, custom components, lucide-react |
-| スタイル | TailwindCSS |
-| バックエンド | Go 1.22 + Echo |
-| データベース | TiDB Serverless (MySQL 互換) |
-| ストレージ | Cloudflare R2 (S3 互換) |
-| AI 推論 | Replicate API (ToonCrafter + SDXL Inpainting) |
-| 動画処理 | FFmpeg (ToonCrafter 出力のフレーム分割) |
-| テスト | Vitest, Playwright, Go testing |
+| Backend | Go 1.22, Echo |
+| AI Inference | Replicate API, ToonCrafter, SDXL Inpainting |
+| Media | FFmpeg |
+| Storage | Cloudflare R2 |
+| Database | TiDB Serverless |
+| Deploy | Cloudflare Pages, Google Cloud Run |
 | CI/CD | GitHub Actions |
-| デプロイ | Cloudflare Pages + Google Cloud Run |
 
-## ローカル開発
+## ローカル起動
 
 ```bash
-# 依存関係のインストール
 bun install
 cd apps/api && go mod tidy && cd ../..
-
-# API サーバー起動 (http://localhost:8080)
-cd apps/api && go run ./cmd/server
-
-# フロントエンド起動 (http://localhost:3000)
-cd apps/web && bun run dev
 ```
 
-FFmpeg がシステムにインストールされている必要があります。
-
-### 環境変数
-
-| 変数 | 必須 | 説明 |
-|------|------|------|
-| `REPLICATE_API_TOKEN` | 実推論時 | Replicate API トークン |
-| `REPLICATE_MODE` | 実推論時 | `demo`（デフォルト）または `replicate` |
-| `DATABASE_URL` | DB 使用時 | TiDB/MySQL DSN |
-| `STUDIO_STORE` | DB 使用時 | `memory`（デフォルト）または `database` |
-| `R2_BUCKET` ほか | 画像保存時 | Cloudflare R2 設定 |
-| `REPLICATE_TOONCRAFTER_VERSION` | 実推論時 | ToonCrafter の Replicate version ID |
-| `REPLICATE_SDXL_INPAINTING_VERSION` | 実推論時 | SDXL Inpainting の Replicate version ID |
-| `R2_PUBLIC_BASE_URL` | 実推論時 | 生成物をブラウザと Replicate から参照するための公開 R2 URL |
-
-詳細は `.env.example` を参照してください。`REPLICATE_MODE=demo` または未設定時は、Replicate token が存在してもデモモードで動作します。
-
-### テスト
+API:
 
 ```bash
-# API テスト
-cd apps/api && go test ./...
-
-# フロントエンド単体テスト
-bun run test:web
-
-# E2E テスト (Playwright)
-cd apps/web && bun run test:e2e
+cd apps/api
+go run ./cmd/server
 ```
 
-## 推論コスト
+Web:
 
-| モデル | 1回あたりのコスト目安 |
-|--------|----------------------|
-| ToonCrafter (中割り生成) | 約 $0.064 |
-| SDXL Inpainting (部分修正) | 約 $0.003 |
+```bash
+cd apps/web
+bun run dev
+```
 
-1セッションあたり合計約 $0.07（約 10 円）。
+デフォルトではデモモードで動作します。実推論を使う場合は Replicate / R2 / DB 関連の環境変数を設定します。
 
-## 既知の制約
+## 検証
 
-- ToonCrafter の出力 MP4 はフレーム分割後に再構成するため、元の動画とフレーム数が一致しない場合があります
-- Cloud Run のリクエストタイムアウト（デフォルト 300 秒）内に処理が完了する前提です
-- Replicate の料金は変動する可能性があります。本番利用前に最新の料金を確認してください
-- 手動編集と書き出しは通常のフロントエンド導線から外しています
-- モバイル向けの最適化は限定的です
+```bash
+bun run build:web
+bun run lint:web
+bun run test:web
+cd apps/api && go test ./...
+```
+
+本番環境では以下を確認済みです。
+
+- `/health`: ok
+- `/health/dependencies`: database / replicate / r2 / ffmpeg すべて ok
+- AI中割り実推論: succeeded
+- Inpainting実推論: succeeded
+- R2 公開画像URL: HTTP 200
+
+## 今後の発展
+
+- 制作会社ごとの作画ルールやキャラクター設定を反映したプロンプト支援
+- カット単位でのレビュー・承認フロー
+- 修正履歴の比較表示
+- スタジオ内アセット管理や制作進行ツールとの連携
+- 現場で使いやすい権限管理、監査ログ、コスト管理
 
 ## ライセンス
 
