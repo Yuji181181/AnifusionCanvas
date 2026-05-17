@@ -496,6 +496,80 @@ progress {
   padding: 12px;
 }
 
+.editor-workspace {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: minmax(0, 1fr) minmax(240px, 300px);
+}
+
+.layer-panel {
+  align-content: start;
+  display: grid;
+  gap: 12px;
+}
+
+.layer-panel-heading {
+  align-items: center;
+  color: #3f4c5f;
+  display: flex;
+  font-size: 13px;
+  gap: 6px;
+}
+
+.layer-list {
+  display: grid;
+  gap: 8px;
+}
+
+.layer-empty {
+  color: #66758a;
+  font-size: 13px;
+  margin: 0;
+}
+
+.layer-item {
+  align-items: center;
+  background: #f8fafc;
+  border: 1px solid #d8e0ea;
+  border-radius: 8px;
+  display: grid;
+  gap: 8px;
+  grid-template-columns: minmax(0, 1fr) 40px;
+  padding: 8px;
+}
+
+.layer-item.active {
+  border-color: #236a5b;
+}
+
+.layer-select-button {
+  background: transparent;
+  border: 0;
+  color: #172033;
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+  padding: 0;
+  text-align: left;
+}
+
+.layer-select-button span {
+  font-size: 13px;
+  font-weight: 800;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.layer-select-button small {
+  color: #66758a;
+  font-size: 11px;
+}
+
+.icon-button.muted {
+  color: #66758a;
+}
+
 .playback-panel {
   aspect-ratio: 16 / 9;
   display: grid;
@@ -515,7 +589,8 @@ progress {
 
   .step-nav,
   .work-grid,
-  .editor-grid {
+  .editor-grid,
+  .editor-workspace {
     grid-template-columns: 1fr;
   }
 
