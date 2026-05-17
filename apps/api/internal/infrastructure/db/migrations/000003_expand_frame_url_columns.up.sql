@@ -1,0 +1,2 @@
+ALTER TABLE studio_frames MODIFY COLUMN image_url MEDIUMTEXT NOT NULL;
+ALTER TABLE studio_frames MODIFY COLUMN thumbnail_url MEDIUMTEXT NOT NULL;

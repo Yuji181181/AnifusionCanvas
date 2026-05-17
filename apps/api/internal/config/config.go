@@ -43,8 +43,8 @@ func Load() (Config, error) {
 		R2Region:                       getEnv("R2_REGION", "auto"),
 		ReplicateAPIToken:              os.Getenv("REPLICATE_API_TOKEN"),
 		ReplicateMode:                  getEnv("REPLICATE_MODE", "demo"),
-		ReplicateToonCrafterVersion:    getEnv("REPLICATE_TOONCRAFTER_VERSION", "fofr/tooncrafter"),
-		ReplicateSDXLInpaintingVersion: getEnv("REPLICATE_SDXL_INPAINTING_VERSION", "lucataco/sdxl-inpainting"),
+		ReplicateToonCrafterVersion:    os.Getenv("REPLICATE_TOONCRAFTER_VERSION"),
+		ReplicateSDXLInpaintingVersion: os.Getenv("REPLICATE_SDXL_INPAINTING_VERSION"),
 		FrontendOrigin:                 getEnv("FRONTEND_ORIGIN", "http://localhost:3000"),
 		StudioStore:                    getEnv("STUDIO_STORE", "memory"),
 	}
@@ -54,6 +54,20 @@ func Load() (Config, error) {
 	}
 	if cfg.StudioStore == "database" && cfg.DatabaseURL == "" {
 		return Config{}, fmt.Errorf("DATABASE_URL is required when STUDIO_STORE=database")
+	}
+	if cfg.ReplicateMode == "replicate" {
+		if cfg.ReplicateAPIToken == "" {
+			return Config{}, fmt.Errorf("REPLICATE_API_TOKEN is required when REPLICATE_MODE=replicate")
+		}
+		if cfg.ReplicateToonCrafterVersion == "" {
+			return Config{}, fmt.Errorf("REPLICATE_TOONCRAFTER_VERSION is required when REPLICATE_MODE=replicate")
+		}
+		if cfg.ReplicateSDXLInpaintingVersion == "" {
+			return Config{}, fmt.Errorf("REPLICATE_SDXL_INPAINTING_VERSION is required when REPLICATE_MODE=replicate")
+		}
+		if cfg.R2PublicBaseURL == "" {
+			return Config{}, fmt.Errorf("R2_PUBLIC_BASE_URL is required when REPLICATE_MODE=replicate")
+		}
 	}
 
 	return cfg, nil

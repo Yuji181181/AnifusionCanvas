@@ -14,7 +14,8 @@
 | Cloudflare Pages production URL | `https://anifusion-canvas.pages.dev` |
 | Frontend API env | `VITE_API_BASE_URL=https://anifusion-api-976317870900.asia-northeast1.run.app` |
 | Backend CORS env | `FRONTEND_ORIGIN=https://anifusion-canvas.pages.dev` |
-| AI inference mode | `REPLICATE_MODE=demo` |
+| AI inference mode | `REPLICATE_MODE=demo` または `replicate` |
+| R2 public base URL | `https://pub-3f92db85f8ca41579c1fab8014e372ca.r2.dev` |
 
 ## 2. ユーザーが用意する Secret
 
@@ -29,6 +30,13 @@ Google Secret Manager に次の secret を作成します。secret 名は deploy
 | `R2_BUCKET` | Cloudflare R2 | 画像と MP4 の保存先 bucket |
 | `R2_ENDPOINT_URL` | Cloudflare R2 | S3 compatible endpoint |
 | `REPLICATE_API_TOKEN` | Replicate account | `REPLICATE_MODE=replicate` 時の ToonCrafter / SDXL Inpainting |
+
+実推論で使う Replicate model version ID:
+
+| 変数 | 値 |
+| --- | --- |
+| `REPLICATE_TOONCRAFTER_VERSION` | `0486ff07368e816ec3d5c69b9581e7a09b55817f567a0d74caad9395c9295c77` |
+| `REPLICATE_SDXL_INPAINTING_VERSION` | `a5b13068cc81a89a4fbeefeccc774869fcb34df4dbc92c1555e0f2771d49dde7` |
 
 作成例:
 
@@ -129,6 +137,11 @@ R2 bucket では、Cloud Run からの S3 compatible API upload と、ブラウ�
 - その base URL を `R2_PUBLIC_BASE_URL` として Cloud Run に設定する
 - 未設定でも API は R2 object の upload 自体は実行できる
 
+`REPLICATE_MODE=replicate` では、Replicate とブラウザが生成物へアクセスできる必要があるため、`R2_PUBLIC_BASE_URL` は必須です。
+
+2026-05-17 時点では、`anifusioncanvas` bucket の r2.dev public URL を有効化済みです。
+R2 CORS は `https://anifusion-canvas.pages.dev` と `http://localhost:3000` からの `GET` / `HEAD` を許可しています。
+
 CORS を設定する場合の例:
 
 ```json
@@ -152,6 +165,24 @@ Secret Manager 版を優先します。クレジットカード登録、利用�
 ```bash
 gh workflow run "Deploy API to Cloud Run via Secret Manager"
 ```
+
+実推論モードでデプロイする場合:
+
+```bash
+gh workflow run "Deploy API to Cloud Run via Secret Manager" \
+  --ref main \
+  -f replicate_mode=replicate \
+  -f tooncrafter_version=0486ff07368e816ec3d5c69b9581e7a09b55817f567a0d74caad9395c9295c77 \
+  -f sdxl_inpainting_version=a5b13068cc81a89a4fbeefeccc774869fcb34df4dbc92c1555e0f2771d49dde7 \
+  -f r2_public_base_url=https://pub-3f92db85f8ca41579c1fab8014e372ca.r2.dev
+```
+
+実推論モードへ切り替える前に、ユーザー側で次を完了してください。
+
+- Replicate の支払い方法または利用可能 credit を設定する
+- Replicate の spend limit / usage limit を安全な金額に設定する
+- R2 bucket の public development URL または custom domain を有効化する
+- R2 の CORS に `https://anifusion-canvas.pages.dev` からの `GET` / `HEAD` を許可する
 
 ローカルから手動実行する場合:
 

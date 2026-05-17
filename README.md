@@ -88,6 +88,7 @@ FFmpeg がシステムにインストールされている必要があります�
 | `R2_BUCKET` ほか | 画像保存時 | Cloudflare R2 設定 |
 | `REPLICATE_TOONCRAFTER_VERSION` | 実推論時 | ToonCrafter の Replicate version ID |
 | `REPLICATE_SDXL_INPAINTING_VERSION` | 実推論時 | SDXL Inpainting の Replicate version ID |
+| `R2_PUBLIC_BASE_URL` | 実推論時 | 生成物をブラウザと Replicate から参照するための公開 R2 URL |
 
 詳細は `.env.example` を参照してください。`REPLICATE_MODE=demo` または未設定時は、Replicate token が存在してもデモモードで動作します。
 
