@@ -23,16 +23,10 @@ test.describe('AnifusionCanvas E2E', () => {
     await page.goto('/')
 
     const stepLinks = page.locator('.step-link')
-    await expect(stepLinks).toHaveCount(4)
+    await expect(stepLinks).toHaveCount(2)
 
     await stepLinks.nth(1).click()
     await expect(page).toHaveURL(/step2/)
-
-    await stepLinks.nth(2).click()
-    await expect(page).toHaveURL(/step3/)
-
-    await stepLinks.nth(3).click()
-    await expect(page).toHaveURL(/export/)
   })
 
   test('generation form validates input', async ({ page }) => {
@@ -147,32 +141,6 @@ test.describe('AnifusionCanvas E2E', () => {
     await expect(page.locator('.frame-kind-generated')).toBeVisible()
     await expect(page.locator('.frame-kind-inpainted')).toBeVisible()
     await expect(page.locator('.frame-kind-edited')).toBeVisible()
-  })
-
-  test('editor panel renders canvas and tools', async ({ page }) => {
-    await page.goto('/step3')
-
-    await expect(page.locator('.toolbar').first()).toBeVisible()
-    await expect(page.locator('canvas').first()).toBeVisible()
-    await expect(page.locator('.icon-button').first()).toBeVisible()
-    await expect(page.getByTitle('多角形')).toBeVisible()
-    await expect(page.getByTitle('選択オブジェクトを複製')).toBeVisible()
-    await expect(page.getByTitle('選択オブジェクトを背面へ')).toBeVisible()
-    await expect(page.getByTitle('選択オブジェクトを前面へ')).toBeVisible()
-    await expect(page.getByTitle('選択オブジェクトを最前面へ')).toBeVisible()
-    await expect(page.getByLabel('レイヤー一覧')).toBeVisible()
-
-    await page.getByTitle('四角').click()
-    await page.getByRole('button', { name: '追加' }).click()
-    await expect(page.locator('.layer-item')).toHaveCount(1)
-    await expect(page.locator('.layer-item')).toContainText('四角')
-    await expect(page.getByLabel('変形')).toBeVisible()
-    await expect(page.getByLabel('回転')).toHaveValue('0')
-    await page.getByLabel('回転').fill('45')
-    await expect(page.getByLabel('回転')).toHaveValue('45')
-
-    await page.getByTitle('レイヤーを非表示').click()
-    await expect(page.getByTitle('レイヤーを表示')).toBeVisible()
   })
 
   test('inpainting target frame can be switched in step 2', async ({ page }) => {
@@ -330,91 +298,14 @@ test.describe('AnifusionCanvas E2E', () => {
     await expect(page.locator('.status-panel')).toContainText('retry accepted')
   })
 
-  test('export API failure shows retry recovery', async ({ page }) => {
-    await page.goto('/step1')
+  test('legacy editor and export URLs redirect to generation', async ({ page }) => {
+    await page.goto('/step3')
+    await expect(page).toHaveURL(/step1/)
 
-    await page.route('**/inference/generate', async (route) => {
-      await route.fulfill({
-        status: 202,
-        contentType: 'application/json',
-        body: JSON.stringify({
-          job: {
-            id: 'job-e2e-export-frames',
-            type: 'generation',
-            status: 'queued',
-            progress: 0,
-            message: 'accepted',
-            version: 1,
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-          },
-        }),
-      })
-    })
+    await page.goto('/step3/edit')
+    await expect(page).toHaveURL(/step1/)
 
-    await page.route('**/jobs/job-e2e-export-frames', async (route) => {
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({
-          job: {
-            id: 'job-e2e-export-frames',
-            type: 'generation',
-            status: 'succeeded',
-            progress: 100,
-            message: 'done',
-            version: 2,
-            result: {
-              frames: [
-                { id: 'export-0', projectId: 'demo-project', index: 0, imageUrl: 'data:image/png;base64,A', thumbnailUrl: 'data:image/png;base64,A', kind: 'key', updatedAt: new Date().toISOString() },
-                { id: 'export-1', projectId: 'demo-project', index: 1, imageUrl: 'data:image/png;base64,B', thumbnailUrl: 'data:image/png;base64,B', kind: 'generated', updatedAt: new Date().toISOString() },
-              ],
-            },
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-          },
-        }),
-      })
-    })
-
-    await page.getByRole('button', { name: /生成を開始/ }).click()
-    await expect(page.locator('.frame-thumb')).toHaveCount(2)
-    await page.locator('.step-link').nth(3).click()
-
-    let attempt = 0
-    await page.route('**/export/video', async (route) => {
-      attempt += 1
-      if (attempt === 1) {
-        await route.fulfill({
-          status: 500,
-          contentType: 'application/json',
-          body: JSON.stringify({ error: { code: 'Internal Server Error', message: 'FFmpeg encode failed' } }),
-        })
-        return
-      }
-
-      await route.fulfill({
-        status: 202,
-        contentType: 'application/json',
-        body: JSON.stringify({
-          job: {
-            id: 'job-e2e-export-retry',
-            type: 'export',
-            status: 'queued',
-            progress: 0,
-            message: 'export retry accepted',
-            version: 1,
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-          },
-        }),
-      })
-    })
-
-    await page.getByRole('button', { name: /MP4を書き出す/ }).click()
-    await expect(page.locator('.recovery-panel')).toContainText('FFmpeg encode failed')
-
-    await page.getByRole('button', { name: /再試行/ }).click()
-    await expect(page.locator('.status-panel')).toContainText('export retry accepted')
+    await page.goto('/export')
+    await expect(page).toHaveURL(/step1/)
   })
 })
