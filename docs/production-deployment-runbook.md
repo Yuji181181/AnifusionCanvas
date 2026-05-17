@@ -14,6 +14,7 @@
 | Cloudflare Pages production URL | `https://anifusion-canvas.pages.dev` |
 | Frontend API env | `VITE_API_BASE_URL=https://anifusion-api-976317870900.asia-northeast1.run.app` |
 | Backend CORS env | `FRONTEND_ORIGIN=https://anifusion-canvas.pages.dev` |
+| AI inference mode | `REPLICATE_MODE=demo` |
 
 ## 2. ユーザーが用意する Secret
 
@@ -27,7 +28,7 @@ Google Secret Manager に次の secret を作成します。secret 名は deploy
 | `R2_SECRET_ACCESS_KEY` | Cloudflare R2 API token | Object upload |
 | `R2_BUCKET` | Cloudflare R2 | 画像と MP4 の保存先 bucket |
 | `R2_ENDPOINT_URL` | Cloudflare R2 | S3 compatible endpoint |
-| `REPLICATE_API_TOKEN` | Replicate account | ToonCrafter / SDXL Inpainting |
+| `REPLICATE_API_TOKEN` | Replicate account | `REPLICATE_MODE=replicate` 時の ToonCrafter / SDXL Inpainting |
 
 作成例:
 
@@ -144,7 +145,7 @@ CORS を設定する場合の例:
 
 ## 6. デプロイ手順
 
-Secret Manager 版を優先します。
+Secret Manager 版を優先します。クレジットカード登録、利用上限、モデル version ID の確認が終わるまでは `REPLICATE_MODE=demo` のままデプロイします。
 
 ```bash
 gh workflow run "Deploy API to Cloud Run via Secret Manager"
@@ -182,7 +183,8 @@ curl -fsS "$API_URL/health/dependencies" | jq
 期待:
 
 - `/health` が `{"status":"ok"}` を返す
-- `/health/dependencies` の `database`, `replicate`, `r2`, `ffmpeg` がすべて `ok`
+- `/health/dependencies` の `database`, `r2`, `ffmpeg` が `ok`
+- `REPLICATE_MODE=demo` の場合、`replicate` は `skipped`
 
 CORS:
 

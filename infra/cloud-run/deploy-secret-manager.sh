@@ -42,5 +42,5 @@ gcloud run deploy "$GCP_SERVICE_NAME" \
   --concurrency "$CLOUD_RUN_CONCURRENCY" \
   --no-cpu-throttling \
   --cpu-boost \
-  --set-env-vars APP_ENV=production,API_PORT=8080,FRONTEND_ORIGIN=https://anifusion-canvas.pages.dev,R2_REGION=auto,R2_PUBLIC_BASE_URL=,STUDIO_STORE=database \
+  --set-env-vars APP_ENV=production,API_PORT=8080,FRONTEND_ORIGIN=https://anifusion-canvas.pages.dev,R2_REGION=auto,R2_PUBLIC_BASE_URL=,STUDIO_STORE=database,REPLICATE_MODE=demo \
   --set-secrets DATABASE_URL=DATABASE_URL:latest,R2_ACCOUNT_ID=R2_ACCOUNT_ID:latest,R2_ACCESS_KEY_ID=R2_ACCESS_KEY_ID:latest,R2_SECRET_ACCESS_KEY=R2_SECRET_ACCESS_KEY:latest,R2_BUCKET=R2_BUCKET:latest,R2_ENDPOINT_URL=R2_ENDPOINT_URL:latest,REPLICATE_API_TOKEN=REPLICATE_API_TOKEN:latest

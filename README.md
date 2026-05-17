@@ -82,13 +82,14 @@ FFmpeg がシステムにインストールされている必要があります�
 | 変数 | 必須 | 説明 |
 |------|------|------|
 | `REPLICATE_API_TOKEN` | 実推論時 | Replicate API トークン |
+| `REPLICATE_MODE` | 実推論時 | `demo`（デフォルト）または `replicate` |
 | `DATABASE_URL` | DB 使用時 | TiDB/MySQL DSN |
 | `STUDIO_STORE` | DB 使用時 | `memory`（デフォルト）または `database` |
 | `R2_BUCKET` ほか | 画像保存時 | Cloudflare R2 設定 |
-| `REPLICATE_TOONCRAFTER_VERSION` | 実推論時 | ToonCrafter モデルバージョン |
-| `REPLICATE_SDXL_INPAINTING_VERSION` | 実推論時 | SDXL Inpainting モデルバージョン |
+| `REPLICATE_TOONCRAFTER_VERSION` | 実推論時 | ToonCrafter の Replicate version ID |
+| `REPLICATE_SDXL_INPAINTING_VERSION` | 実推論時 | SDXL Inpainting の Replicate version ID |
 
-詳細は `apps/api/.env.example` を参照してください。未設定時はデモモードで動作します。
+詳細は `.env.example` を参照してください。`REPLICATE_MODE=demo` または未設定時は、Replicate token が存在してもデモモードで動作します。
 
 ### テスト
 

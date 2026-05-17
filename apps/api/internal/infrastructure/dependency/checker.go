@@ -134,6 +134,9 @@ WHERE table_schema = ? AND table_name = ? AND column_name = ?`, databaseName, ta
 }
 
 func (c *Checker) CheckReplicate(ctx context.Context) CheckResult {
+	if c.cfg.ReplicateMode != "replicate" {
+		return skipped("replicate", "REPLICATE_MODE is demo; Replicate inference is disabled")
+	}
 	if c.cfg.ReplicateAPIToken == "" {
 		return skipped("replicate", "REPLICATE_API_TOKEN is not set")
 	}
