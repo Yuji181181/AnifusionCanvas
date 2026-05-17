@@ -1,6 +1,8 @@
 import type { Frame, Job } from '@anifusion/contracts'
 import { create } from 'zustand'
 
+const projectIdStorageKey = 'anifusion.sessionProjectId'
+
 type FrameState = {
   projectId: string
   frames: Frame[]
@@ -12,8 +14,31 @@ type FrameState = {
   setActiveJob: (job?: Job) => void
 }
 
+function createProjectId() {
+  const suffix = typeof crypto !== 'undefined' && 'randomUUID' in crypto
+    ? crypto.randomUUID()
+    : `${Date.now()}-${Math.random().toString(36).slice(2)}`
+
+  return `browser-${suffix}`
+}
+
+function getBrowserProjectId() {
+  if (typeof window === 'undefined') {
+    return createProjectId()
+  }
+
+  const existing = window.sessionStorage.getItem(projectIdStorageKey)
+  if (existing) {
+    return existing
+  }
+
+  const projectId = createProjectId()
+  window.sessionStorage.setItem(projectIdStorageKey, projectId)
+  return projectId
+}
+
 export const useFrameStore = create<FrameState>((set) => ({
-  projectId: 'demo-project',
+  projectId: getBrowserProjectId(),
   frames: [],
   setFrames: (frames) =>
     set((state) => ({
