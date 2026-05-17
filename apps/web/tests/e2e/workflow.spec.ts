@@ -166,6 +166,10 @@ test.describe('AnifusionCanvas E2E', () => {
     await page.getByRole('button', { name: '追加' }).click()
     await expect(page.locator('.layer-item')).toHaveCount(1)
     await expect(page.locator('.layer-item')).toContainText('四角')
+    await expect(page.getByLabel('変形')).toBeVisible()
+    await expect(page.getByLabel('回転')).toHaveValue('0')
+    await page.getByLabel('回転').fill('45')
+    await expect(page.getByLabel('回転')).toHaveValue('45')
 
     await page.getByTitle('レイヤーを非表示').click()
     await expect(page.getByTitle('レイヤーを表示')).toBeVisible()

@@ -32,7 +32,7 @@
 | UI コンポーネント体系 | 未完了 | shadcn/ui / Radix UI の依存と `components/ui` 体系は未導入 |
 | Step 1 中割り生成 | 実装済み | Replicate 設定時は ToonCrafter、未設定時は demo 生成 |
 | Step 2 Inpainting | 実装済み | Replicate 設定時は SDXL Inpainting、未設定時は demo 差し替え |
-| Step 3 手動編集 | 一部実装済み | 画像読み込み、ペン、図形、テキスト、削除、undo / redo、基本フィルター、レイヤー表示切替、保存に対応 |
+| Step 3 手動編集 | 実装済み | 画像読み込み、ペン、図形、テキスト、削除、undo / redo、基本フィルター、レイヤー表示切替、変形 UI、保存に対応 |
 | Timeline | 一部実装済み | frame kind 表示、選択、API 同期、drag reorder に対応 |
 | Export | 実装済み | FFmpeg で MP4 を生成し、R2 設定時は R2 に保存 |
 | API 基盤 | 実装済み | Go + Echo、handler / usecase / infrastructure の基本分離あり |
@@ -218,14 +218,14 @@ Issue: #26
 - [x] Step 3 の複製、前面 / 背面への基本的な重ね順操作を追加
 - [x] Step 3 の多角形ツールを追加
 - [x] Step 3 のレイヤー一覧、表示 / 非表示を追加
-- [ ] Step 3 の明示的な変形 UI は未完了
+- [x] Step 3 の明示的な変形 UI を追加
 - [x] Step 1 / Step 2 / Export の基本的な API failure / job failure 復帰 UX を追加
 - [ ] モバイル / タブレット / デスクトップの網羅確認は未記録
 
 次の作業:
 
 - UI 方針を「shadcn/ui を導入する」か「既存 Tailwind custom UI を正式採用する」かで決める
-- Step 3 はポートフォリオ用途で必要な編集機能に絞り、明示的な変形 UI を入れるかを判断する
+- Step 3 はポートフォリオ用途で必要な編集機能に絞り、主要 viewport での操作性を確認する
 - Playwright screenshot または手動チェックで主要 viewport の崩れを記録する
 
 ### Phase 7: テスト戦略の完成
@@ -368,7 +368,7 @@ Issue: #29
 目的: ポートフォリオとして触ったときの完成度を上げる。
 
 - Step 2 のブラシサイズ、mask undo、mask clear、対象フレーム切替を改善
-- Step 3 の明示的な変形 UI を追加するか判断する
+- Step 3 の主要 viewport での操作性を確認する
 - 失敗時 toast / retry / disabled state を整理
 - モバイル、タブレット、デスクトップで主要画面を確認
 - shadcn/ui / Radix UI を導入するか、現行 custom UI を正式方針にするか決める
@@ -432,7 +432,7 @@ Issue: #29
 - `apps/api/internal/domain/types.go`: job status、result、transition rule
 - `apps/web/src/features/frame-generation/components/generation-panel.tsx`: Step 1 UI、React Hook Form + Zod、polling
 - `apps/web/src/features/inpainting/components/inpainting-panel.tsx`: Step 2 mask UI、strength、polling
-- `apps/web/src/features/editor/components/editor-panel.tsx`: Step 3 editor、undo / redo、filter、save
+- `apps/web/src/features/editor/components/editor-panel.tsx`: Step 3 editor、undo / redo、filter、layer、transform、save
 - `apps/web/src/features/timeline/components/timeline.tsx`: frame kind 表示、drag reorder
 - `apps/web/src/features/export/components/export-panel.tsx`: preview、MP4 export、download、video playback
 - `apps/web/tests/e2e/workflow.spec.ts`: Playwright 初期 E2E
