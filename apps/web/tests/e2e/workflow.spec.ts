@@ -176,4 +176,99 @@ test.describe('AnifusionCanvas E2E', () => {
     await options.nth(1).click()
     await expect(options.nth(1)).toHaveAttribute('aria-pressed', 'true')
   })
+
+  test('inpainting API failure shows retry recovery', async ({ page }) => {
+    await page.goto('/step1')
+
+    await page.route('**/inference/generate', async (route) => {
+      await route.fulfill({
+        status: 202,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          job: {
+            id: 'job-e2e-recovery',
+            type: 'generation',
+            status: 'queued',
+            progress: 0,
+            message: 'accepted',
+            version: 1,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          },
+        }),
+      })
+    })
+
+    await page.route('**/jobs/job-e2e-recovery', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          job: {
+            id: 'job-e2e-recovery',
+            type: 'generation',
+            status: 'succeeded',
+            progress: 100,
+            message: 'done',
+            version: 2,
+            result: {
+              frames: [
+                { id: 'recover-0', projectId: 'demo-project', index: 0, imageUrl: 'data:image/png;base64,A', thumbnailUrl: 'data:image/png;base64,A', kind: 'key', updatedAt: new Date().toISOString() },
+              ],
+            },
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          },
+        }),
+      })
+    })
+
+    await page.getByRole('button', { name: /生成を開始/ }).click()
+    await expect(page.locator('.frame-thumb')).toHaveCount(1)
+    await page.locator('.step-link').nth(1).click()
+
+    const canvas = page.locator('.canvas-panel canvas').first()
+    const box = await canvas.boundingBox()
+    expect(box).not.toBeNull()
+    await page.mouse.move(box!.x + 80, box!.y + 80)
+    await page.mouse.down()
+    await page.mouse.move(box!.x + 160, box!.y + 140)
+    await page.mouse.up()
+
+    let attempt = 0
+    await page.route('**/inference/inpaint', async (route) => {
+      attempt += 1
+      if (attempt === 1) {
+        await route.fulfill({
+          status: 500,
+          contentType: 'application/json',
+          body: JSON.stringify({ error: { code: 'Internal Server Error', message: 'Replicate is temporarily unavailable' } }),
+        })
+        return
+      }
+
+      await route.fulfill({
+        status: 202,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          job: {
+            id: 'job-e2e-inpaint-retry',
+            type: 'inpainting',
+            status: 'queued',
+            progress: 0,
+            message: 'retry accepted',
+            version: 1,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          },
+        }),
+      })
+    })
+
+    await page.getByRole('button', { name: /修正を実行/ }).click()
+    await expect(page.locator('.recovery-panel')).toContainText('Replicate is temporarily unavailable')
+
+    await page.getByRole('button', { name: /再試行/ }).click()
+    await expect(page.locator('.status-panel')).toContainText('retry accepted')
+  })
 })
