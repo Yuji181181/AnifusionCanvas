@@ -27,6 +27,7 @@ export function InpaintingPanel() {
   const historyIndexRef = useRef(-1)
   const [brushSize, setBrushSize] = useState(24)
   const [isMaskVisible, setIsMaskVisible] = useState(true)
+  const [maskObjectCount, setMaskObjectCount] = useState(0)
   const inpaintJob = activeJob?.type === 'inpainting' ? activeJob : undefined
 
   const {
@@ -48,10 +49,12 @@ export function InpaintingPanel() {
   const syncMaskValue = useCallback((shouldValidate = false) => {
     const canvas = fabricRef.current
     if (!canvas || canvas.getObjects().length === 0) {
+      setMaskObjectCount(0)
       setValue('maskDataUrl', '', { shouldValidate })
       return
     }
 
+    setMaskObjectCount(canvas.getObjects().length)
     setValue('maskDataUrl', canvas.toDataURL({ format: 'png', multiplier: 1 }), { shouldValidate })
   }, [setValue])
 
@@ -91,6 +94,7 @@ export function InpaintingPanel() {
     fabricRef.current = canvas
     historyRef.current = [JSON.stringify(canvas.toJSON())]
     historyIndexRef.current = 0
+    setMaskObjectCount(0)
     syncMaskValue()
     canvas.on('path:created', saveMaskHistory)
 
@@ -100,6 +104,7 @@ export function InpaintingPanel() {
       fabricRef.current = null
       historyRef.current = []
       historyIndexRef.current = -1
+      setMaskObjectCount(0)
     }
   }, [frame?.id, saveMaskHistory, syncMaskValue])
 
@@ -159,6 +164,7 @@ export function InpaintingPanel() {
 
     canvas.clear()
     canvas.renderAll()
+    setMaskObjectCount(0)
     saveMaskHistory()
   }
 
@@ -183,6 +189,7 @@ export function InpaintingPanel() {
   }
 
   const isRunning = mutation.isPending || Boolean(inpaintJob && inpaintJob.status !== 'succeeded' && inpaintJob.status !== 'failed')
+  const hasMask = maskObjectCount > 0
   const failureMessage = readableError(mutation.error)
     ?? (inpaintJob?.status === 'failed' ? inpaintJob.error || inpaintJob.message : undefined)
 
@@ -228,6 +235,13 @@ export function InpaintingPanel() {
         </div>
         <form id="inpainting-form" onSubmit={handleSubmit(runInpaint)}>
           <input type="hidden" {...register('maskDataUrl')} />
+          <p className="input-hint">
+            {!frame
+              ? 'Step 1で生成されたフレームを選択すると修正できます。'
+              : hasMask
+                ? '黒く塗った範囲だけをAIが修正します。'
+                : 'キャンバス上で修正したい範囲を黒く塗ってください。'}
+          </p>
           <label>
             修正プロンプト
             <textarea {...register('prompt')} rows={5} />
@@ -281,9 +295,9 @@ export function InpaintingPanel() {
             >
               {isMaskVisible ? <Eye aria-hidden="true" /> : <EyeOff aria-hidden="true" />}
             </button>
-            <button className="command-button" disabled={!frame || isRunning} type="submit">
+            <button className="command-button" disabled={!frame || !hasMask || isRunning} type="submit">
               <Wand2 aria-hidden="true" />
-              {isRunning ? '修正中...' : '修正を実行'}
+              {isRunning ? '修正中...' : hasMask ? '修正を実行' : 'マスクを描いてください'}
             </button>
           </div>
         </form>
