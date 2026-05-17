@@ -53,10 +53,13 @@ STUDIO_STORE=memory
 
 ```bash
 # .env (デモモードの設定に加えて)
+REPLICATE_MODE=replicate
 REPLICATE_API_TOKEN=r8_xxxxxx
-REPLICATE_TOONCRAFTER_VERSION=fofr/tooncrafter
-REPLICATE_SDXL_INPAINTING_VERSION=lucataco/sdxl-inpainting
+REPLICATE_TOONCRAFTER_VERSION=<Replicate の ToonCrafter version ID>
+REPLICATE_SDXL_INPAINTING_VERSION=<Replicate の SDXL Inpainting version ID>
 ```
+
+`REPLICATE_MODE` のデフォルトは `demo`。クレジットカード登録や利用上限設定が終わるまでは `demo` のままにし、実推論を行うときだけ `replicate` に切り替える。
 
 ### 画像保存 + データベースモード用
 

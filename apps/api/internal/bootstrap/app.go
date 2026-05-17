@@ -54,7 +54,7 @@ func NewApp() (*App, error) {
 		objectStore = store
 	}
 	studioService := usecase.NewStudioServiceWithStoreAndObjects(studioStore, objectStore)
-	if cfg.ReplicateAPIToken != "" {
+	if cfg.ReplicateMode == "replicate" && cfg.ReplicateAPIToken != "" {
 		replicateClient := replicate.NewClient(cfg.ReplicateAPIToken)
 		studioService = usecase.NewStudioServiceWithDependencies(
 			studioStore,
