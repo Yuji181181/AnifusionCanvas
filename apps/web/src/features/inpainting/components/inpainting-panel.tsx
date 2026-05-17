@@ -198,6 +198,10 @@ export function InpaintingPanel() {
           <h1>AIで破綻部分だけ修正</h1>
           <p>黒いブラシでマスクを描き、自然言語で修正内容を指定します。</p>
         </div>
+        <div className="run-note" role="note">
+          <strong>本番モードではReplicateの課金対象です</strong>
+          <span>修正は選択中の1フレームに反映されます。マスクを描いてから実行し、完了まで画面を開いたまま待ってください。</span>
+        </div>
         <div className="target-frame-picker" aria-label="修正対象フレーム">
           <div className="target-frame-heading">
             <Images aria-hidden="true" size={16} />
@@ -279,7 +283,7 @@ export function InpaintingPanel() {
             </button>
             <button className="command-button" disabled={!frame || isRunning} type="submit">
               <Wand2 aria-hidden="true" />
-              修正を実行
+              {isRunning ? '修正中...' : '修正を実行'}
             </button>
           </div>
         </form>

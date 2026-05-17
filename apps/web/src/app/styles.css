@@ -146,6 +146,30 @@ button {
   margin: 0;
 }
 
+.run-note {
+  background: #fff8e6;
+  border: 1px solid #efd28b;
+  border-radius: 8px;
+  color: #6b5422;
+  display: grid;
+  gap: 4px;
+  line-height: 1.55;
+  padding: 12px;
+}
+
+.run-note strong,
+.run-note span {
+  display: block;
+}
+
+.run-note strong {
+  font-size: 13px;
+}
+
+.run-note span {
+  font-size: 12px;
+}
+
 .form-grid {
   display: grid;
   gap: 14px;
