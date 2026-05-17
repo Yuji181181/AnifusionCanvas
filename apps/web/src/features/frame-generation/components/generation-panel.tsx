@@ -12,6 +12,8 @@ import { createDemoFrameDataUrl } from '@/lib/demo-images'
 import { queryClient } from '@/lib/query-client'
 import { useFrameStore } from '@/stores/frame-store'
 
+const maxUploadBytes = 6 * 1024 * 1024
+
 export function GenerationPanel() {
   const projectId = useFrameStore((state) => state.projectId)
   const setFrames = useFrameStore((state) => state.setFrames)
@@ -23,6 +25,8 @@ export function GenerationPanel() {
     register,
     handleSubmit,
     setValue,
+    setError,
+    clearErrors,
     watch,
     formState: { errors },
   } = useForm<GenerationFormValues>({
@@ -107,6 +111,10 @@ export function GenerationPanel() {
           <h1>AIで中割りを生成</h1>
           <p>2枚の原画と動きの指示から、編集可能なフレーム列を生成します。</p>
         </div>
+        <div className="run-note" role="note">
+          <strong>本番モードではReplicateの課金対象です</strong>
+          <span>1回の生成は数十秒から数分かかることがあります。連打せず、ジョブ状態が完了するまで待ってください。</span>
+        </div>
         <form className="form-grid" id="generation-form" onSubmit={handleSubmit(runGeneration)}>
           <label>
             動きの指示
@@ -129,7 +137,7 @@ export function GenerationPanel() {
           </label>
           <button className="command-button" disabled={isGenerating} type="submit">
             <Play aria-hidden="true" />
-            生成を開始
+            {isGenerating ? '生成中...' : '生成を開始'}
           </button>
         </form>
         <RecoveryPanel
@@ -144,12 +152,26 @@ export function GenerationPanel() {
           <FrameUploadPreview
             imageUrl={startImage}
             label="原画 1"
-            onChange={(url) => setValue('startImageDataUrl', url, { shouldValidate: true })}
+            onInvalid={(message) => {
+              setValue('startImageDataUrl', '', { shouldValidate: true })
+              setError('startImageDataUrl', { message, type: 'validate' })
+            }}
+            onChange={(url) => {
+              clearErrors('startImageDataUrl')
+              setValue('startImageDataUrl', url, { shouldValidate: true })
+            }}
           />
           <FrameUploadPreview
             imageUrl={endImage}
             label="原画 2"
-            onChange={(url) => setValue('endImageDataUrl', url, { shouldValidate: true })}
+            onInvalid={(message) => {
+              setValue('endImageDataUrl', '', { shouldValidate: true })
+              setError('endImageDataUrl', { message, type: 'validate' })
+            }}
+            onChange={(url) => {
+              clearErrors('endImageDataUrl')
+              setValue('endImageDataUrl', url, { shouldValidate: true })
+            }}
           />
         </div>
         {errors.startImageDataUrl && (
@@ -168,11 +190,22 @@ type PreviewProps = {
   imageUrl: string
   label: string
   onChange: (value: string) => void
+  onInvalid: (message: string) => void
 }
 
-function FrameUploadPreview({ imageUrl, label, onChange }: PreviewProps) {
+function FrameUploadPreview({ imageUrl, label, onChange, onInvalid }: PreviewProps) {
   function handleFile(file?: File) {
     if (!file) {
+      return
+    }
+
+    if (!file.type.startsWith('image/')) {
+      onInvalid('画像ファイルを選択してください')
+      return
+    }
+
+    if (file.size > maxUploadBytes) {
+      onInvalid('画像は6MB以下にしてください')
       return
     }
 
