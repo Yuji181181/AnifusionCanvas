@@ -8,7 +8,7 @@
 
 そのため、既存テーブルを壊さないようにアプリ用テーブルは `studio_projects / studio_frames / studio_jobs` として作成します。
 
-2026-05-16 時点で、開発DBには migration version `1` を適用済みです。
+2026-05-17 時点で、本番 DB には migration version `3` を適用済みです。
 
 確認できたエラー:
 
@@ -27,6 +27,10 @@ Error 1054 (42S22): Unknown column 'image_url' in 'field list'
 
 - `apps/api/internal/infrastructure/db/migrations/000001_create_core_tables.up.sql`
 - `apps/api/internal/infrastructure/db/migrations/000001_create_core_tables.down.sql`
+- `apps/api/internal/infrastructure/db/migrations/000002_add_job_version.up.sql`
+- `apps/api/internal/infrastructure/db/migrations/000002_add_job_version.down.sql`
+- `apps/api/internal/infrastructure/db/migrations/000003_expand_frame_url_columns.up.sql`
+- `apps/api/internal/infrastructure/db/migrations/000003_expand_frame_url_columns.down.sql`
 
 ## 適用済みのこと
 
