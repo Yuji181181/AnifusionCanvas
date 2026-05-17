@@ -32,6 +32,25 @@ jobs:
       - name: Test web
         run: bun run test:web
 
+      - name: Install Playwright browsers
+        working-directory: apps/web
+        run: bunx playwright install --with-deps chromium
+
+      - name: Test web E2E
+        working-directory: apps/web
+        env:
+          VITE_API_BASE_URL: http://127.0.0.1:8080
+        run: |
+          bun run dev -- --host 127.0.0.1 --port 3000 > /tmp/anifusion-vite.log 2>&1 &
+          for i in {1..30}; do
+            if curl --fail --silent --max-time 1 http://127.0.0.1:3000/ > /dev/null; then
+              break
+            fi
+            sleep 1
+          done
+          curl --fail --silent --max-time 2 http://127.0.0.1:3000/ > /dev/null
+          bun run test:e2e
+
   api:
     runs-on: ubuntu-latest
 

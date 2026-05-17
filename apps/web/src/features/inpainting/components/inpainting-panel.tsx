@@ -1,5 +1,5 @@
 import type { InpaintFrameResult } from '@anifusion/contracts'
-import type { InpaintingFormValues } from '@/lib/form-schemas'
+import { inpaintingFormSchema, type InpaintingFormValues } from '@/lib/form-schemas'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { AlertTriangle, Eraser, Wand2 } from 'lucide-react'
