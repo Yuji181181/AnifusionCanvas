@@ -104,6 +104,10 @@ type ExportVideoJob = Job<ExportVideoResult> & { type: 'export' }
 type StudioJob = GenerateFramesJob | InpaintFrameJob | ExportVideoJob
 ```
 
+Job creation rule:
+
+- `POST /inference/generate`、`POST /inference/inpaint`、`POST /export/video` は、同一 `projectId` で同じ `type` の `queued` または `running` job が存在する場合、新しい外部処理を開始せず `failed` job を返す。
+
 ### Dependency Check Result
 
 | JSON field | Type | Notes |

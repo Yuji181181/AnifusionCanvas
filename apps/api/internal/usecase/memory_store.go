@@ -224,3 +224,19 @@ func (s *MemoryStudioStore) GetJob(jobID string) (domain.Job, bool, error) {
 	job, ok := s.jobs[jobID]
 	return job, ok, nil
 }
+
+func (s *MemoryStudioStore) ListActiveJobs(projectID string, jobType domain.JobType) ([]domain.Job, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	jobs := []domain.Job{}
+	for _, job := range s.jobs {
+		if job.ProjectID != projectID || job.Type != jobType {
+			continue
+		}
+		if job.Status == domain.JobStatusQueued || job.Status == domain.JobStatusRunning {
+			jobs = append(jobs, job)
+		}
+	}
+	return jobs, nil
+}

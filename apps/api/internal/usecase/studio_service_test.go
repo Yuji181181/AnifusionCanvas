@@ -53,6 +53,37 @@ func TestGenerateFramesCreatesTimeline(t *testing.T) {
 	}
 }
 
+func TestGenerateFramesRejectsConcurrentJobForSameProject(t *testing.T) {
+	service := NewStudioService()
+
+	first := service.GenerateFrames(domain.GenerateFramesRequest{
+		ProjectID:         "project-1",
+		Prompt:            "turn around",
+		FrameCount:        3,
+		StartImageDataURL: "data:image/png;base64,start",
+		EndImageDataURL:   "data:image/png;base64,end",
+	})
+	if first.Status == domain.JobStatusFailed {
+		t.Fatalf("expected first job to be accepted, got failed: %s", first.Error)
+	}
+
+	duplicate := service.GenerateFrames(domain.GenerateFramesRequest{
+		ProjectID:         "project-1",
+		Prompt:            "retry too soon",
+		FrameCount:        3,
+		StartImageDataURL: "data:image/png;base64,start",
+		EndImageDataURL:   "data:image/png;base64,end",
+	})
+	if duplicate.Status != domain.JobStatusFailed {
+		t.Fatalf("expected duplicate job to be rejected, got %s", duplicate.Status)
+	}
+	if !strings.Contains(duplicate.Error, "active generation job already exists") {
+		t.Fatalf("expected active job error, got %q", duplicate.Error)
+	}
+
+	waitForJob(t, service, first.ID)
+}
+
 func TestProjectLifecycle(t *testing.T) {
 	service := NewStudioService()
 

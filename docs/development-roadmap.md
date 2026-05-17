@@ -40,7 +40,7 @@
 | R2 ストレージ | 実装済み | 入力、生成、マスク、編集、書き出し動画を object として保存可能 |
 | Replicate 推論 | 実装済み | client、adapter、polling、download、mock tests あり |
 | FFmpeg | 実装済み | MP4 分割と PNG 群からの MP4 エンコードあり |
-| ジョブ制御 | 一部実装済み | queued / running / succeeded / failed、version による楽観的ロック、失敗時 cleanup あり |
+| ジョブ制御 | 一部実装済み | queued / running / succeeded / failed、version による楽観的ロック、同一プロジェクト同種ジョブの重複開始防止、失敗時 cleanup あり |
 | E2E | 初期実装済み | Playwright の smoke / navigation / validation / timeline / editor tests あり |
 | CI | 一部実装済み | web lint / build / unit test / Playwright E2E、api test を実行 |
 | 本番運用 | 一部整備済み | deploy docs と operations guide あり。Secret / 権限 / smoke / rollback は追加整理が必要 |
@@ -185,6 +185,7 @@ Issue: #25
 - [x] 途中失敗時の一部 R2 object cleanup を追加
 - [x] job progress / message を user-facing に整理
 - [x] 長時間 job の基本的な構造化ログを追加
+- [x] 同一プロジェクトで同じ種類の queued / running job がある場合は重複開始を拒否
 - [ ] Cloud Run スケールアウト時に同一 job が複数 worker で走らない設計は十分に固定されていない
 - [ ] request 終了後の background goroutine と Cloud Run インスタンス停止の扱いがリスクとして残る
 - [ ] retry / cancel API は未実装
@@ -289,7 +290,7 @@ Issue: #29
 - [x] 実装済み機能と既知制約を分けて記載
 - [ ] デモ用のサンプルキーフレームは未整備
 - [ ] スクリーンショットまたは短いデモ動画は未整備
-- [ ] 失敗時に高額な再試行が連発しない UI / API 制限は未実装
+- [x] 同一プロジェクト同種ジョブの重複開始を API 側で防ぎ、高額な推論 / 書き出しの連打を抑制
 - [x] README の `React 19` 記述と実依存 `react@18.3.1` の不一致を修正
 - [x] README の UI 技術表記を実依存の TailwindCSS、custom components、lucide-react に修正
 - [ ] 最終レビューで旧技術名、本文 / 表 / 図の不一致を再確認する必要がある

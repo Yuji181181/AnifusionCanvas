@@ -445,6 +445,65 @@ WHERE id = ?`, jobID).Scan(
 	return job, true, nil
 }
 
+func (s *StudioStore) ListActiveJobs(projectID string, jobType domain.JobType) ([]domain.Job, error) {
+	rows, err := s.db.Query(`
+SELECT
+  id,
+  project_id,
+  job_type,
+  status,
+  progress,
+  message,
+  error,
+  version,
+  DATE_FORMAT(created_at, '%Y-%m-%dT%H:%i:%sZ'),
+  DATE_FORMAT(updated_at, '%Y-%m-%dT%H:%i:%sZ')
+FROM studio_jobs
+WHERE project_id = ?
+  AND job_type = ?
+  AND status IN ('queued', 'running')
+ORDER BY created_at ASC`,
+		projectID,
+		string(jobType),
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	jobs := []domain.Job{}
+	for rows.Next() {
+		var job domain.Job
+		var projectIDValue sql.NullString
+		var jobTypeValue string
+		var status string
+		var errorMessage sql.NullString
+		if err := rows.Scan(
+			&job.ID,
+			&projectIDValue,
+			&jobTypeValue,
+			&status,
+			&job.Progress,
+			&job.Message,
+			&errorMessage,
+			&job.Version,
+			&job.CreatedAt,
+			&job.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		job.ProjectID = projectIDValue.String
+		job.Type = domain.JobType(jobTypeValue)
+		job.Status = domain.JobStatus(status)
+		job.Error = errorMessage.String
+		jobs = append(jobs, job)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return jobs, nil
+}
+
 func decodeJobResult(jobType domain.JobType, payload []byte) (any, error) {
 	switch jobType {
 	case domain.JobTypeGeneration:

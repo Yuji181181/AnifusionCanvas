@@ -35,6 +35,7 @@ type StudioStore interface {
 	CreateJob(job domain.Job) error
 	UpdateJob(job domain.Job) (bool, error)
 	GetJob(jobID string) (domain.Job, bool, error)
+	ListActiveJobs(projectID string, jobType domain.JobType) ([]domain.Job, error)
 }
 
 type ObjectStore interface {
@@ -665,6 +666,36 @@ func (s *StudioService) createJob(projectID string, jobType domain.JobType, mess
 					CreatedAt: timestamp,
 					UpdatedAt: timestamp,
 				}
+			}
+		}
+
+		activeJobs, err := s.store.ListActiveJobs(projectID, jobType)
+		if err != nil {
+			timestamp := now()
+			return domain.Job{
+				ID:        fmt.Sprintf("job-%d", time.Now().UnixNano()),
+				ProjectID: projectID,
+				Type:      jobType,
+				Status:    domain.JobStatusFailed,
+				Progress:  0,
+				Message:   "ジョブ状態の確認に失敗しました",
+				Error:     err.Error(),
+				CreatedAt: timestamp,
+				UpdatedAt: timestamp,
+			}
+		}
+		if len(activeJobs) > 0 {
+			timestamp := now()
+			return domain.Job{
+				ID:        fmt.Sprintf("job-%d", time.Now().UnixNano()),
+				ProjectID: projectID,
+				Type:      jobType,
+				Status:    domain.JobStatusFailed,
+				Progress:  activeJobs[0].Progress,
+				Message:   "同じ種類のジョブが実行中です。完了後に再試行してください",
+				Error:     fmt.Sprintf("active %s job already exists: %s", jobType, activeJobs[0].ID),
+				CreatedAt: timestamp,
+				UpdatedAt: timestamp,
 			}
 		}
 	}

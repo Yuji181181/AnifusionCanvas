@@ -161,6 +161,10 @@ curl http://localhost:8080/health/dependencies
 }
 ```
 
+## 5.1 ジョブ重複開始の確認
+
+同一プロジェクトで `generation`、`inpainting`、`export` の同種ジョブが `queued` または `running` の間は、同じ種類のジョブを追加開始しない。画面上で短時間に連続実行した場合は、後続のリクエストが失敗として返り、完了後の再試行を促す。
+
 ## 6. 画面表示の確認
 
 ブラウザで `http://localhost:3000` を開き、以下の画面が表示されることを確認する。
