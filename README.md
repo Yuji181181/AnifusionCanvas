@@ -47,10 +47,10 @@ Step 1:          Step 2:          Step 3:          Step 4:
 
 | 領域 | 技術 |
 |------|------|
-| フロントエンド | React 19, Vite, TanStack Router/Query, Zustand |
+| フロントエンド | React 18, Vite, TanStack Router/Query, Zustand |
 | Canvas 編集 | Fabric.js 7 |
 | フォーム / バリデーション | React Hook Form + Zod |
-| UI | TailwindCSS, shadcn/ui, Radix UI |
+| UI | TailwindCSS, custom components, lucide-react |
 | スタイル | TailwindCSS |
 | バックエンド | Go 1.22 + Echo |
 | データベース | TiDB Serverless (MySQL 互換) |
