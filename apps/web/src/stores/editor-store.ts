@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 
-type Tool = 'select' | 'pen' | 'rect' | 'circle' | 'text'
+type Tool = 'select' | 'pen' | 'rect' | 'circle' | 'polygon' | 'text'
 
 type EditorState = {
   tool: Tool

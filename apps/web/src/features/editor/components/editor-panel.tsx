@@ -1,6 +1,6 @@
 import { useMutation } from '@tanstack/react-query'
-import { Circle, Copy, Layers, MousePointer2, MoveDown, MoveUp, PenLine, Redo, Save, SlidersHorizontal, Square, Sun, Trash2, Type, Undo } from 'lucide-react'
-import { Canvas, Circle as FabricCircle, PencilBrush, Rect, Textbox, filters, type FabricObject } from 'fabric'
+import { Circle, Copy, Hexagon, Layers, MousePointer2, MoveDown, MoveUp, PenLine, Redo, Save, SlidersHorizontal, Square, Sun, Trash2, Type, Undo } from 'lucide-react'
+import { Canvas, Circle as FabricCircle, PencilBrush, Polygon, Rect, Textbox, filters, type FabricObject } from 'fabric'
 import { useCallback, useEffect, useRef } from 'react'
 import { apiClient } from '@/lib/api-client'
 import { queryClient } from '@/lib/query-client'
@@ -13,6 +13,7 @@ const tools = [
   { id: 'pen', icon: PenLine, label: 'ペン' },
   { id: 'rect', icon: Square, label: '四角' },
   { id: 'circle', icon: Circle, label: '円' },
+  { id: 'polygon', icon: Hexagon, label: '多角形' },
   { id: 'text', icon: Type, label: 'テキスト' },
 ] as const
 
@@ -108,6 +109,15 @@ export function EditorPanel() {
     }
     if (tool === 'circle') {
       canvas.add(new FabricCircle({ fill: color, left: 120, radius: 52, top: 90 }))
+    }
+    if (tool === 'polygon') {
+      canvas.add(new Polygon([
+        { x: 64, y: 0 },
+        { x: 128, y: 46 },
+        { x: 104, y: 120 },
+        { x: 24, y: 120 },
+        { x: 0, y: 46 },
+      ], { fill: color, left: 120, top: 90 }))
     }
     if (tool === 'text') {
       canvas.add(new Textbox('修正メモ', { fill: color, fontSize: 42, left: 120, top: 120, width: 260 }))

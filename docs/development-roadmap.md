@@ -216,7 +216,8 @@ Issue: #26
 - [x] Step 2 の API failure / job failure 表示と再試行導線を追加
 - [x] Step 1 / Export の API failure / job failure 表示と再試行導線を追加
 - [x] Step 3 の複製、前面 / 背面への基本的な重ね順操作を追加
-- [ ] Step 3 のレイヤー一覧、表示 / 非表示、多角形、変形 UI は未完了
+- [x] Step 3 の多角形ツールを追加
+- [ ] Step 3 のレイヤー一覧、表示 / 非表示、変形 UI は未完了
 - [x] Step 1 / Step 2 / Export の基本的な API failure / job failure 復帰 UX を追加
 - [ ] モバイル / タブレット / デスクトップの網羅確認は未記録
 
