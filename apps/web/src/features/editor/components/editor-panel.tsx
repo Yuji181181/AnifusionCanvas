@@ -1,7 +1,7 @@
 import { useMutation } from '@tanstack/react-query'
-import { Circle, Copy, Hexagon, Layers, MousePointer2, MoveDown, MoveUp, PenLine, Redo, Save, SlidersHorizontal, Square, Sun, Trash2, Type, Undo } from 'lucide-react'
+import { Circle, Copy, Eye, EyeOff, Hexagon, Layers, MousePointer2, MoveDown, MoveUp, PenLine, Redo, Save, SlidersHorizontal, Square, Sun, Trash2, Type, Undo } from 'lucide-react'
 import { Canvas, Circle as FabricCircle, PencilBrush, Polygon, Rect, Textbox, filters, type FabricObject } from 'fabric'
-import { useCallback, useEffect, useRef } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { apiClient } from '@/lib/api-client'
 import { queryClient } from '@/lib/query-client'
 import { useEditorStore } from '@/stores/editor-store'
@@ -17,6 +17,36 @@ const tools = [
   { id: 'text', icon: Type, label: 'テキスト' },
 ] as const
 
+type LayerItem = {
+  id: string
+  index: number
+  isActive: boolean
+  isVisible: boolean
+  label: string
+}
+
+function layerLabel(object: FabricObject) {
+  if (object.type === 'textbox') {
+    return 'テキスト'
+  }
+  if (object.type === 'rect') {
+    return '四角'
+  }
+  if (object.type === 'circle') {
+    return '円'
+  }
+  if (object.type === 'polygon') {
+    return '多角形'
+  }
+  if (object.type === 'path') {
+    return 'ペン'
+  }
+  if (object.type === 'image') {
+    return '画像'
+  }
+  return 'レイヤー'
+}
+
 export function EditorPanel() {
   const projectId = useFrameStore((state) => state.projectId)
   const upsertFrame = useFrameStore((state) => state.upsertFrame)
@@ -31,6 +61,42 @@ export function EditorPanel() {
   const fabricRef = useRef<Canvas | null>(null)
   const undoManagerRef = useRef<UndoManager | null>(null)
   const frameImageRef = useRef<fabric.Image | null>(null)
+  const objectIdsRef = useRef<WeakMap<FabricObject, string>>(new WeakMap())
+  const nextObjectIdRef = useRef(1)
+  const [layers, setLayers] = useState<LayerItem[]>([])
+
+  const syncLayers = useCallback(() => {
+    const canvas = fabricRef.current
+    if (!canvas) {
+      setLayers([])
+      return
+    }
+
+    const active = canvas.getActiveObject()
+    const items = canvas
+      .getObjects()
+      .map((object, index) => ({ object, index }))
+      .filter(({ object }) => object !== frameImageRef.current)
+      .map(({ object, index }) => {
+        let id = objectIdsRef.current.get(object)
+        if (!id) {
+          id = `layer-${nextObjectIdRef.current}`
+          nextObjectIdRef.current += 1
+          objectIdsRef.current.set(object, id)
+        }
+
+        return {
+          id,
+          index,
+          isActive: object === active,
+          isVisible: object.visible !== false,
+          label: layerLabel(object),
+        }
+      })
+      .reverse()
+
+    setLayers(items)
+  }, [])
 
   useEffect(() => {
     if (!canvasElementRef.current) {
@@ -43,6 +109,8 @@ export function EditorPanel() {
       width: 960,
     })
     fabricRef.current = canvas
+    objectIdsRef.current = new WeakMap()
+    nextObjectIdRef.current = 1
     const undoManager = new UndoManager(canvas)
     undoManagerRef.current = undoManager
 
@@ -57,23 +125,44 @@ export function EditorPanel() {
           frameImageRef.current = img
           canvas.renderAll()
           undoManager.save()
+          syncLayers()
         },
         { crossOrigin: 'anonymous' },
       )
     } else {
       undoManager.save()
+      syncLayers()
     }
 
-    canvas.on('object:modified', () => undoManager.save())
-    canvas.on('path:created', () => undoManager.save())
+    const saveAndSync = () => {
+      undoManager.save()
+      syncLayers()
+    }
+    const syncOnly = () => syncLayers()
+
+    canvas.on('object:added', syncOnly)
+    canvas.on('object:removed', syncOnly)
+    canvas.on('object:modified', saveAndSync)
+    canvas.on('path:created', saveAndSync)
+    canvas.on('selection:created', syncOnly)
+    canvas.on('selection:updated', syncOnly)
+    canvas.on('selection:cleared', syncOnly)
 
     return () => {
+      canvas.off('object:added', syncOnly)
+      canvas.off('object:removed', syncOnly)
+      canvas.off('object:modified', saveAndSync)
+      canvas.off('path:created', saveAndSync)
+      canvas.off('selection:created', syncOnly)
+      canvas.off('selection:updated', syncOnly)
+      canvas.off('selection:cleared', syncOnly)
       canvas.dispose()
       fabricRef.current = null
       undoManagerRef.current = null
       frameImageRef.current = null
+      setLayers([])
     }
-  }, [frame?.id, frame?.imageUrl])
+  }, [frame?.id, frame?.imageUrl, syncLayers])
 
   useEffect(() => {
     const canvas = fabricRef.current
@@ -124,7 +213,8 @@ export function EditorPanel() {
     }
     canvas.renderAll()
     undoManagerRef.current?.save()
-  }, [color, tool])
+    syncLayers()
+  }, [color, syncLayers, tool])
 
   function deleteSelected() {
     const canvas = fabricRef.current
@@ -138,6 +228,7 @@ export function EditorPanel() {
       canvas.discardActiveObject()
       canvas.renderAll()
       undoManagerRef.current?.save()
+      syncLayers()
     }
   }
 
@@ -163,6 +254,39 @@ export function EditorPanel() {
     }
   }
 
+  function objectAtLayerIndex(index: number) {
+    return fabricRef.current?.getObjects()[index]
+  }
+
+  function selectLayer(index: number) {
+    const canvas = fabricRef.current
+    const object = objectAtLayerIndex(index)
+    if (!canvas || !object || object.visible === false) {
+      return
+    }
+
+    canvas.setActiveObject(object)
+    canvas.renderAll()
+    syncLayers()
+  }
+
+  function toggleLayerVisibility(index: number) {
+    const canvas = fabricRef.current
+    const object = objectAtLayerIndex(index)
+    if (!canvas || !object || object === frameImageRef.current) {
+      return
+    }
+
+    const nextVisible = object.visible === false
+    object.set('visible', nextVisible)
+    if (!nextVisible && canvas.getActiveObject() === object) {
+      canvas.discardActiveObject()
+    }
+    canvas.renderAll()
+    undoManagerRef.current?.save()
+    syncLayers()
+  }
+
   async function duplicateSelected() {
     const canvas = fabricRef.current
     const active = selectedEditableObject()
@@ -179,6 +303,7 @@ export function EditorPanel() {
     canvas.setActiveObject(clone)
     canvas.renderAll()
     undoManagerRef.current?.save()
+    syncLayers()
   }
 
   function bringSelectedForward() {
@@ -191,6 +316,7 @@ export function EditorPanel() {
     canvas.bringObjectForward(active)
     canvas.renderAll()
     undoManagerRef.current?.save()
+    syncLayers()
   }
 
   function sendSelectedBackward() {
@@ -204,6 +330,7 @@ export function EditorPanel() {
     keepAboveFrameImage(active)
     canvas.renderAll()
     undoManagerRef.current?.save()
+    syncLayers()
   }
 
   function bringSelectedToFront() {
@@ -216,14 +343,17 @@ export function EditorPanel() {
     canvas.bringObjectToFront(active)
     canvas.renderAll()
     undoManagerRef.current?.save()
+    syncLayers()
   }
 
   function handleUndo() {
     undoManagerRef.current?.undo()
+    window.setTimeout(syncLayers, 0)
   }
 
   function handleRedo() {
     undoManagerRef.current?.redo()
+    window.setTimeout(syncLayers, 0)
   }
 
   function applyFilter(filterType: string, value: number) {
@@ -352,8 +482,43 @@ export function EditorPanel() {
           <input max={50} min={0} onChange={(e) => applyFilter('Blur', Number(e.target.value))} type="range" />
         </span>
       </div>
-      <div className="panel editor-canvas-panel">
-        <canvas ref={canvasElementRef} />
+      <div className="editor-workspace">
+        <div className="panel editor-canvas-panel">
+          <canvas ref={canvasElementRef} />
+        </div>
+        <aside className="panel layer-panel" aria-label="レイヤー一覧">
+          <div className="layer-panel-heading">
+            <Layers aria-hidden="true" size={16} />
+            <strong>レイヤー</strong>
+          </div>
+          <div className="layer-list">
+            {layers.length === 0 ? (
+              <p className="layer-empty">追加した編集レイヤーはありません</p>
+            ) : (
+              layers.map((layer, visibleIndex) => (
+                <div className={layer.isActive ? 'layer-item active' : 'layer-item'} key={layer.id}>
+                  <button
+                    aria-pressed={layer.isActive}
+                    className="layer-select-button"
+                    onClick={() => selectLayer(layer.index)}
+                    type="button"
+                  >
+                    <span>{layer.label}</span>
+                    <small>#{layers.length - visibleIndex}</small>
+                  </button>
+                  <button
+                    className={layer.isVisible ? 'icon-button' : 'icon-button muted'}
+                    onClick={() => toggleLayerVisibility(layer.index)}
+                    title={layer.isVisible ? 'レイヤーを非表示' : 'レイヤーを表示'}
+                    type="button"
+                  >
+                    {layer.isVisible ? <Eye aria-hidden="true" /> : <EyeOff aria-hidden="true" />}
+                  </button>
+                </div>
+              ))
+            )}
+          </div>
+        </aside>
       </div>
     </section>
   )

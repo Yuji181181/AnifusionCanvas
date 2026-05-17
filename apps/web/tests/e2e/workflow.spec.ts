@@ -160,6 +160,15 @@ test.describe('AnifusionCanvas E2E', () => {
     await expect(page.getByTitle('選択オブジェクトを背面へ')).toBeVisible()
     await expect(page.getByTitle('選択オブジェクトを前面へ')).toBeVisible()
     await expect(page.getByTitle('選択オブジェクトを最前面へ')).toBeVisible()
+    await expect(page.getByLabel('レイヤー一覧')).toBeVisible()
+
+    await page.getByTitle('四角').click()
+    await page.getByRole('button', { name: '追加' }).click()
+    await expect(page.locator('.layer-item')).toHaveCount(1)
+    await expect(page.locator('.layer-item')).toContainText('四角')
+
+    await page.getByTitle('レイヤーを非表示').click()
+    await expect(page.getByTitle('レイヤーを表示')).toBeVisible()
   })
 
   test('inpainting target frame can be switched in step 2', async ({ page }) => {
