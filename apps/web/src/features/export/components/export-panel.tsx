@@ -6,6 +6,7 @@ import { AlertTriangle, Download, Film, Play, RotateCcw } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { JobStatusPanel } from '@/components/shared/job-status'
+import { readableError, RecoveryPanel } from '@/components/shared/recovery-panel'
 import { apiClient } from '@/lib/api-client'
 import { useFrameStore } from '@/stores/frame-store'
 
@@ -75,6 +76,13 @@ export function ExportPanel() {
     mutation.mutate({ projectId: values.projectId, fps: values.fps })
   }
 
+  function clearFailure() {
+    mutation.reset()
+    if (exportJob?.status === 'failed') {
+      setActiveJob(undefined)
+    }
+  }
+
   function handleReExport() {
     setActiveJob(undefined)
     videoRef.current?.pause()
@@ -86,6 +94,8 @@ export function ExportPanel() {
   }
 
   const isExporting = mutation.isPending || Boolean(exportJob && exportJob.status !== 'succeeded' && exportJob.status !== 'failed')
+  const failureMessage = readableError(mutation.error)
+    ?? (exportJob?.status === 'failed' ? exportJob.error || exportJob.message : undefined)
 
   return (
     <section className="work-grid">
@@ -95,7 +105,7 @@ export function ExportPanel() {
           <h1>完成フレームを動画に書き出し</h1>
           <p>自動プレビューと最終MP4書き出しを分け、明示的な操作だけで動画化します。</p>
         </div>
-        <form onSubmit={handleSubmit(runExport)}>
+        <form id="export-form" onSubmit={handleSubmit(runExport)}>
           <label>
             FPS {fps}
             <input {...register('fps', { valueAsNumber: true })} max={24} min={4} type="range" />
@@ -125,6 +135,12 @@ export function ExportPanel() {
             </button>
           )}
         </form>
+        <RecoveryPanel
+          formId="export-form"
+          message={failureMessage}
+          onDismiss={clearFailure}
+          title="書き出しを完了できませんでした"
+        />
         <JobStatusPanel job={exportJob} />
       </div>
       <div className="panel playback-panel">

@@ -6,6 +6,7 @@ import { AlertTriangle, ImagePlus, Play } from 'lucide-react'
 import { useEffect, useMemo } from 'react'
 import { useForm } from 'react-hook-form'
 import { JobStatusPanel } from '@/components/shared/job-status'
+import { readableError, RecoveryPanel } from '@/components/shared/recovery-panel'
 import { apiClient } from '@/lib/api-client'
 import { createDemoFrameDataUrl } from '@/lib/demo-images'
 import { queryClient } from '@/lib/query-client'
@@ -16,6 +17,7 @@ export function GenerationPanel() {
   const setFrames = useFrameStore((state) => state.setFrames)
   const activeJob = useFrameStore((state) => state.activeJob)
   const setActiveJob = useFrameStore((state) => state.setActiveJob)
+  const generationJob = activeJob?.type === 'generation' ? activeJob : undefined
 
   const {
     register,
@@ -50,9 +52,9 @@ export function GenerationPanel() {
   }, [demoImages, projectId, setValue])
 
   const jobQuery = useQuery({
-    queryKey: ['job', activeJob?.id],
-    enabled: Boolean(activeJob && activeJob.status !== 'succeeded' && activeJob.status !== 'failed'),
-    queryFn: () => apiClient.getJob<GenerateFramesResult>(activeJob!.id),
+    queryKey: ['job', generationJob?.id],
+    enabled: Boolean(generationJob && generationJob.status !== 'succeeded' && generationJob.status !== 'failed'),
+    queryFn: () => apiClient.getJob<GenerateFramesResult>(generationJob!.id),
     refetchInterval: 900,
   })
 
@@ -84,9 +86,18 @@ export function GenerationPanel() {
     })
   }
 
+  function clearFailure() {
+    mutation.reset()
+    if (generationJob?.status === 'failed') {
+      setActiveJob(undefined)
+    }
+  }
+
   const startImage = watch('startImageDataUrl')
   const endImage = watch('endImageDataUrl')
-  const isGenerating = mutation.isPending || (activeJob?.status !== 'failed' && activeJob?.status !== 'succeeded' && !!activeJob)
+  const isGenerating = mutation.isPending || Boolean(generationJob && generationJob.status !== 'failed' && generationJob.status !== 'succeeded')
+  const failureMessage = readableError(mutation.error)
+    ?? (generationJob?.status === 'failed' ? generationJob.error || generationJob.message : undefined)
 
   return (
     <section className="work-grid">
@@ -96,7 +107,7 @@ export function GenerationPanel() {
           <h1>AIで中割りを生成</h1>
           <p>2枚の原画と動きの指示から、編集可能なフレーム列を生成します。</p>
         </div>
-        <form className="form-grid" onSubmit={handleSubmit(runGeneration)}>
+        <form className="form-grid" id="generation-form" onSubmit={handleSubmit(runGeneration)}>
           <label>
             動きの指示
             <textarea {...register('prompt')} rows={4} />
@@ -121,6 +132,12 @@ export function GenerationPanel() {
             生成を開始
           </button>
         </form>
+        <RecoveryPanel
+          formId="generation-form"
+          message={failureMessage}
+          onDismiss={clearFailure}
+          title="生成を完了できませんでした"
+        />
       </div>
       <div className="panel">
         <div className="preview-pair">
@@ -141,7 +158,7 @@ export function GenerationPanel() {
         {errors.endImageDataUrl && (
           <p className="field-error"><AlertTriangle aria-hidden="true" size={14} /> {errors.endImageDataUrl.message}</p>
         )}
-        <JobStatusPanel job={activeJob} />
+        <JobStatusPanel job={generationJob} />
       </div>
     </section>
   )

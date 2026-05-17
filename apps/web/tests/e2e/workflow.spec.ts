@@ -49,6 +49,46 @@ test.describe('AnifusionCanvas E2E', () => {
     await expect(page.locator('.field-error').first()).toBeVisible()
   })
 
+  test('generation API failure shows retry recovery', async ({ page }) => {
+    await page.goto('/step1')
+
+    let attempt = 0
+    await page.route('**/inference/generate', async (route) => {
+      attempt += 1
+      if (attempt === 1) {
+        await route.fulfill({
+          status: 503,
+          contentType: 'application/json',
+          body: JSON.stringify({ error: { code: 'Service Unavailable', message: 'Generation capacity is temporarily unavailable' } }),
+        })
+        return
+      }
+
+      await route.fulfill({
+        status: 202,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          job: {
+            id: 'job-e2e-generation-retry',
+            type: 'generation',
+            status: 'queued',
+            progress: 0,
+            message: 'generation retry accepted',
+            version: 1,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          },
+        }),
+      })
+    })
+
+    await page.getByRole('button', { name: /生成を開始/ }).click()
+    await expect(page.locator('.recovery-panel')).toContainText('Generation capacity is temporarily unavailable')
+
+    await page.getByRole('button', { name: /再試行/ }).click()
+    await expect(page.locator('.status-panel')).toContainText('generation retry accepted')
+  })
+
   test('timeline displays frame kind tags after generating demo frames', async ({ page }) => {
     await page.goto('/step1')
 
@@ -270,5 +310,93 @@ test.describe('AnifusionCanvas E2E', () => {
 
     await page.getByRole('button', { name: /再試行/ }).click()
     await expect(page.locator('.status-panel')).toContainText('retry accepted')
+  })
+
+  test('export API failure shows retry recovery', async ({ page }) => {
+    await page.goto('/step1')
+
+    await page.route('**/inference/generate', async (route) => {
+      await route.fulfill({
+        status: 202,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          job: {
+            id: 'job-e2e-export-frames',
+            type: 'generation',
+            status: 'queued',
+            progress: 0,
+            message: 'accepted',
+            version: 1,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          },
+        }),
+      })
+    })
+
+    await page.route('**/jobs/job-e2e-export-frames', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          job: {
+            id: 'job-e2e-export-frames',
+            type: 'generation',
+            status: 'succeeded',
+            progress: 100,
+            message: 'done',
+            version: 2,
+            result: {
+              frames: [
+                { id: 'export-0', projectId: 'demo-project', index: 0, imageUrl: 'data:image/png;base64,A', thumbnailUrl: 'data:image/png;base64,A', kind: 'key', updatedAt: new Date().toISOString() },
+                { id: 'export-1', projectId: 'demo-project', index: 1, imageUrl: 'data:image/png;base64,B', thumbnailUrl: 'data:image/png;base64,B', kind: 'generated', updatedAt: new Date().toISOString() },
+              ],
+            },
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          },
+        }),
+      })
+    })
+
+    await page.getByRole('button', { name: /生成を開始/ }).click()
+    await expect(page.locator('.frame-thumb')).toHaveCount(2)
+    await page.locator('.step-link').nth(3).click()
+
+    let attempt = 0
+    await page.route('**/export/video', async (route) => {
+      attempt += 1
+      if (attempt === 1) {
+        await route.fulfill({
+          status: 500,
+          contentType: 'application/json',
+          body: JSON.stringify({ error: { code: 'Internal Server Error', message: 'FFmpeg encode failed' } }),
+        })
+        return
+      }
+
+      await route.fulfill({
+        status: 202,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          job: {
+            id: 'job-e2e-export-retry',
+            type: 'export',
+            status: 'queued',
+            progress: 0,
+            message: 'export retry accepted',
+            version: 1,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          },
+        }),
+      })
+    })
+
+    await page.getByRole('button', { name: /MP4を書き出す/ }).click()
+    await expect(page.locator('.recovery-panel')).toContainText('FFmpeg encode failed')
+
+    await page.getByRole('button', { name: /再試行/ }).click()
+    await expect(page.locator('.status-panel')).toContainText('export retry accepted')
   })
 })
