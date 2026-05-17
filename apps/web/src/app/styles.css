@@ -521,6 +521,31 @@ progress {
   gap: 8px;
 }
 
+.transform-panel {
+  border-top: 1px solid #d8e0ea;
+  display: grid;
+  gap: 12px;
+  padding-top: 12px;
+}
+
+.transform-grid {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.transform-grid label {
+  color: #3f4c5f;
+  font-size: 12px;
+  gap: 5px;
+}
+
+.transform-grid input[type="number"] {
+  min-width: 0;
+  padding: 8px 9px;
+  width: 100%;
+}
+
 .layer-empty {
   color: #66758a;
   font-size: 13px;

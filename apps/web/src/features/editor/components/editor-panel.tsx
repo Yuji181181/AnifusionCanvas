@@ -25,6 +25,13 @@ type LayerItem = {
   label: string
 }
 
+type TransformState = {
+  x: number
+  y: number
+  scale: number
+  rotation: number
+}
+
 function layerLabel(object: FabricObject) {
   if (object.type === 'textbox') {
     return 'テキスト'
@@ -47,6 +54,15 @@ function layerLabel(object: FabricObject) {
   return 'レイヤー'
 }
 
+function transformStateFor(object: FabricObject): TransformState {
+  return {
+    x: Math.round(object.left ?? 0),
+    y: Math.round(object.top ?? 0),
+    scale: Math.round((((object.scaleX ?? 1) + (object.scaleY ?? 1)) / 2) * 100),
+    rotation: Math.round(object.angle ?? 0),
+  }
+}
+
 export function EditorPanel() {
   const projectId = useFrameStore((state) => state.projectId)
   const upsertFrame = useFrameStore((state) => state.upsertFrame)
@@ -64,6 +80,7 @@ export function EditorPanel() {
   const objectIdsRef = useRef<WeakMap<FabricObject, string>>(new WeakMap())
   const nextObjectIdRef = useRef(1)
   const [layers, setLayers] = useState<LayerItem[]>([])
+  const [selectedTransform, setSelectedTransform] = useState<TransformState | null>(null)
 
   const syncLayers = useCallback(() => {
     const canvas = fabricRef.current
@@ -73,6 +90,7 @@ export function EditorPanel() {
     }
 
     const active = canvas.getActiveObject()
+    setSelectedTransform(active && active !== frameImageRef.current ? transformStateFor(active) : null)
     const items = canvas
       .getObjects()
       .map((object, index) => ({ object, index }))
@@ -161,6 +179,7 @@ export function EditorPanel() {
       undoManagerRef.current = null
       frameImageRef.current = null
       setLayers([])
+      setSelectedTransform(null)
     }
   }, [frame?.id, frame?.imageUrl, syncLayers])
 
@@ -193,23 +212,28 @@ export function EditorPanel() {
       return
     }
 
+    let object: FabricObject | undefined
     if (tool === 'rect') {
-      canvas.add(new Rect({ fill: color, height: 88, left: 80, top: 80, width: 132 }))
+      object = new Rect({ fill: color, height: 88, left: 80, top: 80, width: 132 })
     }
     if (tool === 'circle') {
-      canvas.add(new FabricCircle({ fill: color, left: 120, radius: 52, top: 90 }))
+      object = new FabricCircle({ fill: color, left: 120, radius: 52, top: 90 })
     }
     if (tool === 'polygon') {
-      canvas.add(new Polygon([
+      object = new Polygon([
         { x: 64, y: 0 },
         { x: 128, y: 46 },
         { x: 104, y: 120 },
         { x: 24, y: 120 },
         { x: 0, y: 46 },
-      ], { fill: color, left: 120, top: 90 }))
+      ], { fill: color, left: 120, top: 90 })
     }
     if (tool === 'text') {
-      canvas.add(new Textbox('修正メモ', { fill: color, fontSize: 42, left: 120, top: 120, width: 260 }))
+      object = new Textbox('修正メモ', { fill: color, fontSize: 42, left: 120, top: 120, width: 260 })
+    }
+    if (object) {
+      canvas.add(object)
+      canvas.setActiveObject(object)
     }
     canvas.renderAll()
     undoManagerRef.current?.save()
@@ -282,6 +306,33 @@ export function EditorPanel() {
     if (!nextVisible && canvas.getActiveObject() === object) {
       canvas.discardActiveObject()
     }
+    canvas.renderAll()
+    undoManagerRef.current?.save()
+    syncLayers()
+  }
+
+  function updateSelectedTransform(field: keyof TransformState, value: number) {
+    const canvas = fabricRef.current
+    const active = selectedEditableObject()
+    if (!canvas || !active) {
+      return
+    }
+
+    if (field === 'x') {
+      active.set('left', value)
+    }
+    if (field === 'y') {
+      active.set('top', value)
+    }
+    if (field === 'scale') {
+      const scale = Math.max(10, Math.min(400, value)) / 100
+      active.set({ scaleX: scale, scaleY: scale })
+    }
+    if (field === 'rotation') {
+      active.set('angle', value)
+    }
+
+    active.setCoords()
     canvas.renderAll()
     undoManagerRef.current?.save()
     syncLayers()
@@ -516,6 +567,58 @@ export function EditorPanel() {
                   </button>
                 </div>
               ))
+            )}
+          </div>
+          <div className="transform-panel" aria-label="変形">
+            <div className="layer-panel-heading">
+              <SlidersHorizontal aria-hidden="true" size={16} />
+              <strong>変形</strong>
+            </div>
+            {selectedTransform ? (
+              <div className="transform-grid">
+                <label>
+                  X
+                  <input
+                    max={960}
+                    min={-960}
+                    onChange={(event) => updateSelectedTransform('x', Number(event.target.value))}
+                    type="number"
+                    value={selectedTransform.x}
+                  />
+                </label>
+                <label>
+                  Y
+                  <input
+                    max={540}
+                    min={-540}
+                    onChange={(event) => updateSelectedTransform('y', Number(event.target.value))}
+                    type="number"
+                    value={selectedTransform.y}
+                  />
+                </label>
+                <label>
+                  拡大率
+                  <input
+                    max={400}
+                    min={10}
+                    onChange={(event) => updateSelectedTransform('scale', Number(event.target.value))}
+                    type="number"
+                    value={selectedTransform.scale}
+                  />
+                </label>
+                <label>
+                  回転
+                  <input
+                    max={360}
+                    min={-360}
+                    onChange={(event) => updateSelectedTransform('rotation', Number(event.target.value))}
+                    type="number"
+                    value={selectedTransform.rotation}
+                  />
+                </label>
+              </div>
+            ) : (
+              <p className="layer-empty">編集レイヤーを選択してください</p>
             )}
           </div>
         </aside>
